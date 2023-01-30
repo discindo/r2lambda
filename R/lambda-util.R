@@ -21,10 +21,11 @@ check_system_dependencies <- function() {
 }
 
 #' connect to an aws service
-#' @param service an unquoted name of a service, e.g., `paws::lambda`
+#' @param service character, the name of a service, e.g., "lambda" or "iam". Should
+#' be a function exported by `{paws}` (see `getNamespaceExports("paws")`)
 #' @examples
 #' \dontrun{
-#'   aws_connect(paws::lambda)
+#'   aws_connect("lambda")
 #'   }
 #' @noRd
 aws_connect <- function(service) {
@@ -55,9 +56,19 @@ aws_connect <- function(service) {
     len = 1
   )
 
+  logger::log_debug("[aws_connect] Checking requested service.")
+
+  if (!service %in% getNamespaceExports("paws")) {
+    msg <- glue::glue("The service `{service}` does not appear to be available in `paws`")
+    logger::log_error(msg)
+    rlan::abord(msg)
+  }
+
+
   logger::log_debug("[aws_connect] Connecting to AWS.")
 
-  service(config = list(
+  .service <- getFromNamespace(service, "paws")
+  .service(config = list(
     credentials = list(
       creds = list(
         access_key_id = Sys.getenv("ACCESS_KEY_ID"),
@@ -218,7 +229,7 @@ push_lambda_image <- function(tag) {
   checkmate::assert_character(tag)
 
   logger::log_debug("[push_lambda_image] Checking if repository already exists.")
-  ecr_service <- aws_connect(paws::ecr)
+  ecr_service <- aws_connect("ecr")
 
   repos <- ecr_service$describe_repositories()$repositories
   repos_names <- sapply(repos, "[[", "repositoryName")
@@ -271,7 +282,7 @@ create_lambda_exec_role <- function(tag) {
   role_name <- paste(tag, uuid::UUIDgenerate(1), sep = "--")
 
   logger::log_debug("[create_lambda_exec_role] Creating Lambda execution role.")
-  iam_service <- aws_connect(paws::iam)
+  iam_service <- aws_connect("iam")
   role_meta <- iam_service$create_role(
     RoleName = role_name,
     AssumeRolePolicyDocument = role_string
@@ -290,7 +301,7 @@ create_lambda_exec_role <- function(tag) {
 #' delete_lambda_exec_role
 #' @noRd
 delete_lambda_exec_role <- function(tag) {
-  iam_service <- aws_connect(paws::iam)
+  iam_service <- aws_connect("iam")
   iam_service$delete_role(
     RoleName = tag
   )
@@ -309,7 +320,7 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
   checkmate::assert_character(tag)
 
   logger::log_debug("[create_lambda_function] Creating lambda function.")
-  lambda_service <- aws_connect(paws::lambda)
+  lambda_service <- aws_connect("lambda")
   lambda <- lambda_service$create_function(
     FunctionName = tag,
     Code = list(ImageUri = glue::glue("{ecr_image_uri}:latest")),
@@ -331,7 +342,7 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
 #' delete_lambda_function
 #' @noRd
 delete_lambda_function <- function(tag) {
-  lambda_service <- aws_connect(paws::lambda)
+  lambda_service <- aws_connect("lambda")
   lambda_service$delete_function(
     FunctionName = tag
   )
