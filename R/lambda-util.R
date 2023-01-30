@@ -1,0 +1,336 @@
+is_aws_cli_installed <- function() {
+  IS_AWS_INSTALLED <- !system2("which", "aws")
+  checkmate::assert_true(IS_AWS_INSTALLED)
+}
+
+is_docker_installed <- function() {
+  IS_DOCKER_INSTALLED <- !system2("which", "docker")
+  checkmate::assert_true(IS_DOCKER_INSTALLED)
+}
+
+#' check_system_deps
+#'
+check_system_dependencies <- function() {
+  logger::log_debug("[check_system_dependencies] Checking if `aws cli` is installed.")
+  is_aws_cli_installed()
+
+  logger::log_debug("[check_system_dependencies] Checking if `docker` is installed.")
+  is_docker_installed()
+
+  logger::log_debug("[check_system_dependencies] Done.")
+}
+
+#' connect to an aws service
+#' @param service an unquoted name of a service, e.g., `paws::lambda`
+#' @examples
+#' \dontrun{
+#'   aws_connect(paws::lambda)
+#'   }
+#' @export
+aws_connect <- function(service) {
+
+  logger::log_debug("[aws_connect] Checking env vars.")
+
+  checkmate::assert_character(
+    x = Sys.getenv("ACCESS_KEY_ID"),
+    min.chars = 1,
+    len = 1
+  )
+
+  checkmate::assert_character(
+    x = Sys.getenv("SECRET_ACCESS_KEY"),
+    min.chars = 1,
+    len = 1
+  )
+
+  checkmate::assert_character(
+    x = Sys.getenv("PROFILE"),
+    min.chars = 1,
+    len = 1
+  )
+
+  checkmate::assert_character(
+    x = Sys.getenv("REGION"),
+    min.chars = 1,
+    len = 1
+  )
+
+  logger::log_debug("[aws_connect] Connecting to AWS.")
+
+  service(config = list(
+    credentials = list(
+      creds = list(
+        access_key_id = Sys.getenv("ACCESS_KEY_ID"),
+        secret_access_key = Sys.getenv("SECRET_ACCESS_KEY")
+      ),
+      profile = Sys.getenv("PROFILE")
+    ),
+    region = Sys.getenv("REGION")
+  ))
+}
+
+#' install_deps_line
+#' @noRd
+install_deps_line <- function(deps) {
+
+  checkmate::assert_character(deps)
+
+  repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
+  glued <- glue::glue_collapse(glue::single_quote(deps), sep = ", ")
+  glue::glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
+}
+
+#' runtime_line
+#' @noRd
+runtime_line <- function(runtime) {
+  checkmate::assert_character(runtime)
+  rt <- glue::double_quote(runtime)
+  glue::glue('CMD [{rt}]')
+}
+
+#' create_lambda_dockerfile
+#'
+#' @param folder path to store the Dockerfile
+#' @param runtime_function name of the runtime function
+#' @param runtime_path path to the script containing the runtime function
+#' @param dependencies list of dependencies
+#'
+#' @examples
+#' \dontrun{
+#'   runtime_function <- "parity"
+#'   runtime_path <- system.file("parity.R", package = "r2lambda")
+#'   folder <- "~/Desktop/parity-lambda"
+#'   dependencies <- NULL
+#'
+#'   create_lambda_dockerfile(
+#'     folder = folder,
+#'     runtime_function = runtime_function,
+#'     runtime_path = runtime_path,
+#'     dependencies = dependencies
+#'     )
+#'   dir.exists(folder)
+#'   dir(folder)
+#' }
+#'
+#' @export
+create_lambda_dockerfile <-
+  function(folder,
+           runtime_function,
+           runtime_path,
+           dependencies) {
+
+    logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
+
+    checkmate::assert_character(
+      x = folder,
+      min.chars = 1,
+      len = 1
+    )
+
+    if (checkmate::test_directory_exists(folder)) {
+      msg <- glue::glue("[create_lambda_dockerfile] Directory {folder} exists. Please choose another name.")
+      logger::log_error(msg)
+      rlang::abort(msg)
+    }
+
+    checkmate::assert_character(
+      x = runtime_function,
+      min.chars = 1,
+      len = 1,
+    )
+
+    checkmate::assert_character(
+      x = runtime_path,
+      min.chars = 1,
+      len = 1
+    )
+
+    if (!checkmate::test_file_exists(runtime_path)) {
+      msg <- glue::glue("[create_lambda_dockerfile] Can't access runtime script file {runtime_path}.")
+      logger::log_error(msg)
+      rlang::abort(msg)
+    }
+
+    checkmate::assert_character(
+      x = dependencies,
+      min.chars = 1,
+      len = 1,
+      null.ok = TRUE
+    )
+
+    logger::log_debug("[create_lambda_dockerfile] Creating directory with Dockerfile and runtime script.")
+
+    docker_template <- system.file("lambdr_dockerfile.txt", package = "r2lambda")
+
+    dir.create(folder)
+    dir.exists(folder)
+
+    file.copy(runtime_path, folder)
+    file.rename(from = file.path(folder, basename(runtime_path)),
+                to = file.path(folder, "runtime.R"))
+
+    file.copy(docker_template, folder, recursive = FALSE)
+    file.rename(from = file.path(folder, basename(docker_template)),
+                to = file.path(folder, "Dockerfile"))
+
+    logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
+
+    if (!is.null(dependencies)) {
+      deps_string <- install_deps_line(deps = c("dplyr"))
+      write(deps_string,
+            file = file.path(folder, "Dockerfile"),
+            append = TRUE)
+    }
+
+    runtime_string <- runtime_line(runtime_function)
+
+    write(runtime_string,
+          file = file.path(folder, "Dockerfile"),
+          append = TRUE)
+
+    logger::log_debug("[create_lambda_dockerfile] Done.")
+  }
+
+#' create_lambda_container
+#'
+#' @param folder path to the folder containing the lambda runtime script and Dockerfile
+#' @param tag a tag for the image
+#'
+#' @export
+create_lambda_image <- function(folder, tag) {
+  logger::log_debug("[create_lambda_image] Validating inputs.")
+  checkmate::assert_character(tag)
+  checkmate::assert_character(folder)
+  checkmate::assert_directory_exists(folder)
+
+  logger::log_debug("[create_lambda_image] Building docker image.")
+  .call <- glue::glue("docker build -t {tag} {folder}")
+  system(.call)
+
+  logger::log_debug("[create_lambda_image] Done.")
+}
+
+#' push_lambda_container to AWS ECR
+#'
+#' @param tag the tag of an existing local image
+#'
+#' @export
+push_lambda_image <- function(tag) {
+
+  logger::log_debug("[push_lambda_image] Validating inputs.")
+  checkmate::assert_character(tag)
+
+  logger::log_debug("[push_lambda_image] Checking if repository already exists.")
+  ecr_service <- aws_connect(paws::ecr)
+
+  repos <- ecr_service$describe_repositories()$repositories
+  repos_names <- sapply(repos, "[[", "repositoryName")
+
+  if (tag %in% repos_names) {
+    logger::log_debug("[push_lambda_image] Repository exists. Fetching URI.")
+    needed_repo <- repos_names == tag
+    repo_uri <- repos[needed_repo][[1]]$repositoryUri
+  } else {
+    logger::log_debug("[push_lambda_image] Creating new repository and fetching URI.")
+    repo_meta <- ecr_service$create_repository(
+      repositoryName = tag,
+      imageScanningConfiguration = list(scanOnPush = TRUE)
+    )
+    repo_uri <- repo_meta$repository$repositoryUri
+  }
+
+  logger::log_debug("[push_lambda_image] Tagging docker image.")
+
+  .tag_call <- glue::glue("docker tag {tag}:latest {repo_uri}:latest")
+  system(.tag_call)
+
+  logger::log_debug("[push_lambda_image] Authenticating Docker with AWS ECR.")
+
+  aws_profile <- Sys.getenv("PROFILE")
+  aws_region <- Sys.getenv("REGION")
+
+  .auth_call <- glue::glue("aws ecr get-login-password --region {aws_region} --profile {aws_profile} | docker login --username AWS --password-stdin {repo_uri}")
+  system(.auth_call)
+
+  logger::log_debug("[push_lambda_image] Pushing Docker image to AWS ECR.")
+  .push_call <- glue::glue("docker push {repo_uri}:latest")
+  system(.push_call)
+
+  logger::log_debug("[push_lambda_image] Done.")
+  invisible(repo_uri)
+}
+
+#' create_lambda_exec_role
+#' @param tag the tag of an existing local image
+#' @export
+create_lambda_exec_role <- function(tag) {
+
+  logger::log_debug("[create_lambda_exec_role] Validating inputs.")
+  checkmate::assert_character(tag)
+
+  logger::log_debug("[create_lambda_exec_role] Getting Lambda role json.")
+  role <- system.file("lambda-role.json", package = "r2lambda")
+  role_string <- lambdr::as_stringified_json(jsonlite::fromJSON(role))
+  role_name <- paste(tag, uuid::UUIDgenerate(1), sep = "--")
+
+  logger::log_debug("[create_lambda_exec_role] Creating Lambda execution role.")
+  iam_service <- aws_connect(paws::iam)
+  role_meta <- iam_service$create_role(
+    RoleName = role_name,
+    AssumeRolePolicyDocument = role_string
+  )
+
+  logger::log_debug("[create_lambda_exec_role] Attaching basic execution role policy.")
+  iam_service$attach_role_policy(
+    RoleName = role_name,
+    PolicyArn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    )
+
+  logger::log_debug("[create_lambda_exec_role] Done.")
+  invisible(role_meta)
+}
+
+delete_lambda_exec_role <- function(tag) {
+  iam_service <- aws_connect(paws::iam)
+  iam_service$delete_role(
+    RoleName = tag
+  )
+}
+
+#' create_lambda_function
+#'
+#' @param tag the tag of an existing local image
+#' @param ecr_image_uri the URI of the image to use
+#' @param lambda_role_arn the arn of the execution role created for this lambda
+
+create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
+
+  logger::log_debug("[create_lambda_function] Validating inputs.")
+  checkmate::assert_character(tag)
+
+  logger::log_debug("[create_lambda_function] Creating lambda function.")
+  lambda_service <- aws_connect(paws::lambda)
+  lambda <- lambda_service$create_function(
+    FunctionName = tag,
+    Code = list(ImageUri = glue::glue("{ecr_image_uri}:latest")),
+    PackageType = "Image",
+    Role = lambda_role_arn,
+    ## TODO: Logic to set env vars if deployed lambda needs them
+    # Environment = list(Variables = list(
+    #   REGION = Sys.getenv("REGION"),
+    #   PROFILE = Sys.getenv("PROFILE"),
+    #   SECRET_ACCESS_KEY = Sys.getenv("SECRET_ACCESS_KEY"),
+    #   ACCESS_KEY_ID = Sys.getenv("ACCESS_KEY_ID")
+    # ))
+  )
+
+  logger::log_debug("[create_lambda_function] Done.")
+  invisible(lambda)
+}
+
+delete_lambda_function <- function(tag) {
+  lambda_service <- aws_connect(paws::lambda)
+  lambda_service$delete_function(
+    FunctionName = tag
+  )
+}
