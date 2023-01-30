@@ -61,13 +61,13 @@ aws_connect <- function(service) {
   if (!service %in% getNamespaceExports("paws")) {
     msg <- glue::glue("The service `{service}` does not appear to be available in `paws`")
     logger::log_error(msg)
-    rlan::abord(msg)
+    rlang::abort(msg)
   }
 
 
   logger::log_debug("[aws_connect] Connecting to AWS.")
 
-  .service <- getFromNamespace(service, "paws")
+  .service <- utils::getFromNamespace(service, "paws")
   .service(config = list(
     credentials = list(
       creds = list(
