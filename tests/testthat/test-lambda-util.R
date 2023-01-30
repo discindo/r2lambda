@@ -1,6 +1,6 @@
 
-test_that("aws_connect fails ok when env vars are missing or incorrect", {
-  testthat::skip_on_ci({
+if (FALSE) { # only in in interactive session
+  test_that("aws_connect fails ok when env vars are missing or incorrect", {
     correct_env <- Sys.getenv("ACCESS_KEY_ID")
     Sys.setenv(ACCESS_KEY_ID = "")
     expect_error(aws_connect("lambda"))
@@ -21,18 +21,16 @@ test_that("aws_connect fails ok when env vars are missing or incorrect", {
     expect_error(aws_connect("lambda"))
     Sys.setenv(REGION = correct_env)
   })
-})
 
-test_that("aws_connect fails ok when bad service is requested", {
-  testthat::skip_on_ci({ expect_error(aws_connect("lambd")) })
-})
+  test_that("aws_connect fails ok when bad service is requested", {
+    expect_error(aws_connect("lambd"))
+  })
 
-test_that("aws_connect works", {
-  testthat::skip_on_ci({
+  test_that("aws_connect works", {
     test <- aws_connect("lambda")
     checkmate::expect_list(x = test, len = 59)
   })
-})
+}
 
 test_that("install_deps_line fails ok with incorrect input", {
 
