@@ -9,7 +9,7 @@ is_docker_installed <- function() {
 }
 
 #' check_system_deps
-#'
+#' @noRd
 check_system_dependencies <- function() {
   logger::log_debug("[check_system_dependencies] Checking if `aws cli` is installed.")
   is_aws_cli_installed()
@@ -26,6 +26,7 @@ check_system_dependencies <- function() {
 #' \dontrun{
 #'   aws_connect(paws::lambda)
 #'   }
+#' @noRd
 aws_connect <- function(service) {
 
   logger::log_debug("[aws_connect] Checking env vars.")
@@ -110,6 +111,7 @@ runtime_line <- function(runtime) {
 #'   dir.exists(folder)
 #'   dir(folder)
 #' }
+#' @noRd
 create_lambda_dockerfile <-
   function(folder,
            runtime_function,
@@ -192,6 +194,7 @@ create_lambda_dockerfile <-
 #'
 #' @param folder path to the folder containing the lambda runtime script and Dockerfile
 #' @param tag a tag for the image
+#' @noRd
 create_lambda_image <- function(folder, tag) {
   logger::log_debug("[create_lambda_image] Validating inputs.")
   checkmate::assert_character(tag)
@@ -208,6 +211,7 @@ create_lambda_image <- function(folder, tag) {
 #' push_lambda_container to AWS ECR
 #'
 #' @param tag the tag of an existing local image
+#' @noRd
 push_lambda_image <- function(tag) {
 
   logger::log_debug("[push_lambda_image] Validating inputs.")
@@ -255,6 +259,7 @@ push_lambda_image <- function(tag) {
 
 #' create_lambda_exec_role
 #' @param tag the tag of an existing local image
+#' @noRd
 create_lambda_exec_role <- function(tag) {
 
   logger::log_debug("[create_lambda_exec_role] Validating inputs.")
@@ -282,6 +287,8 @@ create_lambda_exec_role <- function(tag) {
   invisible(role_meta)
 }
 
+#' delete_lambda_exec_role
+#' @noRd
 delete_lambda_exec_role <- function(tag) {
   iam_service <- aws_connect(paws::iam)
   iam_service$delete_role(
@@ -294,6 +301,7 @@ delete_lambda_exec_role <- function(tag) {
 #' @param tag the tag of an existing local image
 #' @param ecr_image_uri the URI of the image to use
 #' @param lambda_role_arn the arn of the execution role created for this lambda
+#' @noRd
 
 create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
 
@@ -320,6 +328,8 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
   invisible(lambda)
 }
 
+#' delete_lambda_function
+#' @noRd
 delete_lambda_function <- function(tag) {
   lambda_service <- aws_connect(paws::lambda)
   lambda_service$delete_function(
