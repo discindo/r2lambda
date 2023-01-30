@@ -1,6 +1,6 @@
 
 test_that("aws_connect fails ok when env vars are missing or incorrect", {
-  if (FALSE) {
+  testthat::skip_on_ci({
     correct_env <- Sys.getenv("ACCESS_KEY_ID")
     Sys.setenv(ACCESS_KEY_ID = "")
     expect_error(aws_connect("lambda"))
@@ -20,7 +20,7 @@ test_that("aws_connect fails ok when env vars are missing or incorrect", {
     Sys.setenv(REGION = "")
     expect_error(aws_connect("lambda"))
     Sys.setenv(REGION = correct_env)
-  }
+  })
 })
 
 test_that("aws_connect fails ok when bad service is requested", {
