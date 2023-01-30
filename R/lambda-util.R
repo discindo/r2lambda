@@ -59,11 +59,10 @@ aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
-    msg <- glue::glue("The service `{service}` does not appear to be available in `paws`")
+    msg <- glue::glue("The service `{service}` does not appear to be available in `paws`.")
     logger::log_error(msg)
     rlang::abort(msg)
   }
-
 
   logger::log_debug("[aws_connect] Connecting to AWS.")
 
@@ -147,12 +146,14 @@ create_lambda_dockerfile <-
       x = runtime_function,
       min.chars = 1,
       len = 1,
+      any.missing = FALSE
     )
 
     checkmate::assert_character(
       x = runtime_path,
       min.chars = 1,
-      len = 1
+      len = 1,
+      any.missing = FALSE
     )
 
     if (!checkmate::test_file_exists(runtime_path)) {
@@ -211,6 +212,28 @@ create_lambda_image <- function(folder, tag) {
   checkmate::assert_character(tag)
   checkmate::assert_character(folder)
   checkmate::assert_directory_exists(folder)
+
+  checkmate::assert_file_exists(file.path(folder, "Dockerfile"))
+  checkmate::assert_file_exists(file.path(folder, "runtime.R"))
+
+  logger::log_debug("[create_lambda_image] Confirming that files are not empty.")
+  checkmate::assert_numeric(
+    x = file.size(file.path(folder, "Dockerfile")),
+    lower = 1,
+    any.missing = FALSE,
+    all.missing = FALSE,
+    len = 1,
+    .var.name = "Check if file is empty."
+  )
+
+  checkmate::assert_numeric(
+    x = file.size(file.path(folder, "runtime.R")),
+    lower = 1,
+    any.missing = FALSE,
+    all.missing = FALSE,
+    len = 1,
+    .var.name = "Check if file is empty."
+  )
 
   logger::log_debug("[create_lambda_image] Building docker image.")
   .call <- glue::glue("docker build -t {tag} {folder}")
