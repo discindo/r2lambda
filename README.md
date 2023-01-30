@@ -34,28 +34,9 @@ services are available in the `R` session. This is typically done via an
     REGION = "YOUR AWS REGION"
 
 Additionally, for Docker to be able to authenticate with AWS Elastic
-Container Registry to push images, we also need to set up a `.aws`
-folder with two files, `config` and `credentials`, the following
-content:
-
-- `config` (defining a AWS profile):
-
-<!-- -->
-
-    [default]
-    region = YOUR AWS REGION
-    output = json
-
-- `credentials` (defining AWS secrets):
-
-<!-- -->
-
-    [default]
-    aws_access_key_id = YOUR AWS ACCESS KEY ID
-    aws_secret_access_key = YOUR AWS SECRET ACCESS KEY
-
-More details:
-<https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html>
+Container Registry to push images, we also need to configure the
+`aws cli`
+(<https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html>).
 
 ## Run
 
@@ -82,4 +63,3 @@ invoke_lambda(
 #> Lambda response payload: 
 #> {"parity":"even"}
 ```
-# r2lambda
