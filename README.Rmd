@@ -16,6 +16,9 @@ knitr::opts_chunk$set(
 # r2lambda
 
 <!-- badges: start -->
+
+![R-CMD-check](https://github.com/discindo/newscatcheR/workflows/R-CMD-check/badge.svg)
+
 <!-- badges: end -->
 
 The goal of `{r2lambda}` is to make it easier to go from an `R` script to a deployed 
