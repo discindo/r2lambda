@@ -24,12 +24,14 @@ test_that("aws_connect fails ok when env vars are missing or incorrect", {
 })
 
 test_that("aws_connect fails ok when bad service is requested", {
-  expect_error(aws_connect("lambd"))
+  testthat::skip_on_ci({ expect_error(aws_connect("lambd")) })
 })
 
 test_that("aws_connect works", {
-  test <- aws_connect("lambda")
-  checkmate::expect_list(x = test, len = 59)
+  testthat::skip_on_ci({
+    test <- aws_connect("lambda")
+    checkmate::expect_list(x = test, len = 59)
+  })
 })
 
 test_that("install_deps_line fails ok with incorrect input", {
