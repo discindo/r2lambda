@@ -20,16 +20,23 @@ deploy an R script to AWS Lambda
 }
 \examples{
 \dontrun{
+
   runtime_function <- "parity"
   runtime_path <- system.file("parity.R", package = "r2lambda")
   dependencies <- NULL
 
   deploy_lambda(
-    tag = "lambda-test101",
+    tag = "parity-test1",
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
     )
+
+ invoke_lambda(
+   function_name = "parity-test1",
+   payload = list(number = 3),
+   invocation_type = "RequestResponse"
+  )
 
 }
 }

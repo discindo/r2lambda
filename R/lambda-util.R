@@ -26,7 +26,6 @@ check_system_dependencies <- function() {
 #' \dontrun{
 #'   aws_connect(paws::lambda)
 #'   }
-#' @export
 aws_connect <- function(service) {
 
   logger::log_debug("[aws_connect] Checking env vars.")
@@ -111,8 +110,6 @@ runtime_line <- function(runtime) {
 #'   dir.exists(folder)
 #'   dir(folder)
 #' }
-#'
-#' @export
 create_lambda_dockerfile <-
   function(folder,
            runtime_function,
@@ -195,8 +192,6 @@ create_lambda_dockerfile <-
 #'
 #' @param folder path to the folder containing the lambda runtime script and Dockerfile
 #' @param tag a tag for the image
-#'
-#' @export
 create_lambda_image <- function(folder, tag) {
   logger::log_debug("[create_lambda_image] Validating inputs.")
   checkmate::assert_character(tag)
@@ -213,8 +208,6 @@ create_lambda_image <- function(folder, tag) {
 #' push_lambda_container to AWS ECR
 #'
 #' @param tag the tag of an existing local image
-#'
-#' @export
 push_lambda_image <- function(tag) {
 
   logger::log_debug("[push_lambda_image] Validating inputs.")
@@ -262,7 +255,6 @@ push_lambda_image <- function(tag) {
 
 #' create_lambda_exec_role
 #' @param tag the tag of an existing local image
-#' @export
 create_lambda_exec_role <- function(tag) {
 
   logger::log_debug("[create_lambda_exec_role] Validating inputs.")

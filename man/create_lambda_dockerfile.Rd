@@ -34,5 +34,4 @@ create_lambda_dockerfile
   dir.exists(folder)
   dir(folder)
 }
-
 }

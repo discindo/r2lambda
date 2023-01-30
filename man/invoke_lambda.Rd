@@ -20,7 +20,6 @@ invoke a lambda function
 }
 \examples{
 \dontrun{
-  # assumes a lambda called parity is deployed
   invoke_lambda(
    function_name = "lambda-test88",
    payload = list(number = 3),
