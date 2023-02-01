@@ -125,8 +125,10 @@ parse_password <- function(ecr_token) {
 #'     runtime_path = runtime_path,
 #'     dependencies = dependencies
 #'     )
+#'   create_lambda_image(folder, tag = "test-tag")
 #'   dir.exists(folder)
 #'   dir(folder)
+#'   unlink(folder, recursive = TRUE)
 #' }
 #' @noRd
 create_lambda_dockerfile <-
@@ -243,8 +245,10 @@ create_lambda_image <- function(folder, tag) {
   )
 
   logger::log_debug("[create_lambda_image] Building docker image.")
-  .call <- glue::glue("docker build -t {tag} {folder}")
-  system(.call)
+
+  dockerfile <- file.path(folder, "Dockerfile")
+  docker_client <- stevedore::docker_client()
+  docker_client$image$build(context = folder, tag = paste0(tag,":latest"))
 
   logger::log_debug("[create_lambda_image] Done.")
 }
