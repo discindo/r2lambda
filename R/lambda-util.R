@@ -1,10 +1,10 @@
 is_aws_cli_installed <- function() {
-  IS_AWS_INSTALLED <- !system2("which", "aws")
+  IS_AWS_INSTALLED <- isTRUE(Sys.which("aws"))
   checkmate::assert_true(IS_AWS_INSTALLED)
 }
 
 is_docker_installed <- function() {
-  IS_DOCKER_INSTALLED <- !system2("which", "docker")
+  IS_DOCKER_INSTALLED <- isTRUE(Sys.which("docker"))
   checkmate::assert_true(IS_DOCKER_INSTALLED)
 }
 
@@ -96,6 +96,13 @@ runtime_line <- function(runtime) {
   checkmate::assert_character(runtime)
   rt <- glue::double_quote(runtime)
   glue::glue('CMD [{rt}]')
+}
+
+#' parse password from ecr token
+parse_password <- function(ecr_token) {
+  ecr_token %>%
+    base64decode() %>%
+    stringr::str_remove("^AWS:")
 }
 
 #' create_lambda_dockerfile
