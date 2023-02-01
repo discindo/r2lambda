@@ -23,7 +23,7 @@ You can install the development version of `{r2lambda}` like so:
 
 ``` r
 # install_packages("remotes")
-remotes::install_github("discindo", "r2lambda")
+remotes::install_github("discindo/r2lambda")
 ```
 
 ## Setup
