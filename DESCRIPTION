@@ -20,6 +20,7 @@ Imports:
     jsonlite,
     lambdr,
     logger,
+    magrittr,
     paws,
     rlang,
     stevedore,
