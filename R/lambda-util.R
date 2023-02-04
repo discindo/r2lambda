@@ -106,7 +106,7 @@ parse_password <- function(ecr_token) {
   ecr_token %>%
     jsonlite::base64_dec() %>%
     rawToChar() %>%
-    stringr::str_remove("^AWS:")
+    gsub(pattern = "^AWS:", replacement = "", x = .)
 }
 
 #' create_lambda_dockerfile
@@ -300,7 +300,7 @@ push_lambda_image <- function(tag) {
   ecr_token <- ecr_service$get_authorization_token()
   ecr_password <- parse_password(ecr_token$authorizationData[[1]]$authorizationToken)
   repo_uri <- fetch_ecr_repo(tag)
-  server_address <- repo_uri %>% stringr::str_remove("/.*$")
+  server_address <- repo_uri %>% gsub(pattern = "/.*$", replacement = "", x = .)
 
   docker_cli <- stevedore::docker_client()
   docker_cli$login(username = "AWS",
