@@ -11,11 +11,12 @@ coverage](https://codecov.io/gh/discindo/r2lambda/branch/main/graph/badge.svg)](
 <!-- badges: end -->
 
 The goal of `{r2lambda}` is to make it easier to go from an `R` script
-to a deployed `AWS Lambda` service.
+to a deployed `AWS Lambda` function.
 
 ## Requirements
 
-- Assumes the AWS command line interface and Docker are installed.
+- [docker](https://docs.docker.com/get-docker/) is required to build,
+  tag, and push the image.
 
 ## Installation
 
