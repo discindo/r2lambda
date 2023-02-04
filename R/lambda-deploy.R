@@ -31,7 +31,7 @@ deploy_lambda <-
   function(tag, runtime_function, runtime_path, dependencies) {
     ## Inputs are validated by lower-level functions
 
-    logger::log_info("[deploy_lambda] Checking system dependencies (`aws cli`, `docker`).")
+    logger::log_info("[deploy_lambda] Checking system dependencies.")
     check_system_dependencies()
 
     logger::log_info("[deploy_lambda] Creating temporary working directory.")
