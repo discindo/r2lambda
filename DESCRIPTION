@@ -8,9 +8,9 @@ Authors@R:
              role = c("aut", "cre"),
              email = "teofiln@gmail.com")
              )
-Description: The goal of {r2lambda} is to make it easier to go from an R script 
-    to a deployed AWS Lambda service. It does this by wrapping preexisting functionality
-    from the `paws` and `lambdr` packages.
+Description: The goal of `{r2lambda}` is to make it easier to go from an `R` script 
+    to a deployed AWS Lambda function. It does this by wrapping preexisting functionality
+    from the `{paws}` and `{lambdr}` packages.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
