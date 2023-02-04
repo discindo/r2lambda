@@ -37,11 +37,6 @@ services are available in the `R` session. This is typically done via an
     PROFILE = "YOUR AWS PROFILE"
     REGION = "YOUR AWS REGION"
 
-Additionally, for Docker to be able to authenticate with AWS Elastic
-Container Registry to push images, we also need to configure the
-`aws cli`
-(<https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html>).
-
 ## Run
 
 ``` r
