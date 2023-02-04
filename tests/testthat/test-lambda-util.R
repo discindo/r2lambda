@@ -58,6 +58,22 @@ test_that("runtime_line fails ok with incorrect input", {
 
 })
 
+test_that("parse_password works", {
+  expect_error(parse_password("AWS:my_password"))
+
+  pass <- jsonlite::base64_enc("AWS:my_password")
+  test <- parse_password(pass)
+  expect_equal(test, "my_password")
+
+  pass <- jsonlite::base64_enc("AWS:my_password:AWS:")
+  test <- parse_password(pass)
+  expect_equal(test, "my_password:AWS:")
+
+  pass <- jsonlite::base64_enc("my_password")
+  test <- parse_password(pass)
+  expect_equal(test, "my_password")
+})
+
 test_that("runtime_line works with correct input", {
   runtime <- "my_fun"
   test <- runtime_line(runtime = runtime)
