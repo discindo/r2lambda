@@ -1,10 +1,12 @@
 is_aws_cli_installed <- function() {
-  IS_AWS_INSTALLED <- isTRUE(Sys.which("aws"))
+  which_aws <- Sys.which("aws")
+  IS_AWS_INSTALLED <- ifelse(which_aws[[1]] == "", FALSE, TRUE)
   checkmate::assert_true(IS_AWS_INSTALLED)
 }
 
 is_docker_installed <- function() {
-  IS_DOCKER_INSTALLED <- isTRUE(Sys.which("docker"))
+  which_docker <- Sys.which("docker")
+  IS_DOCKER_INSTALLED <- ifelse(which_docker[[1]] == "", FALSE, TRUE)
   checkmate::assert_true(IS_DOCKER_INSTALLED)
 }
 
@@ -99,9 +101,11 @@ runtime_line <- function(runtime) {
 }
 
 #' parse password from ecr token
+#' @noRd
 parse_password <- function(ecr_token) {
   ecr_token %>%
-    base64decode() %>%
+    jsonlite::base64_dec() %>%
+    rawToChar() %>%
     stringr::str_remove("^AWS:")
 }
 
@@ -211,6 +215,33 @@ create_lambda_dockerfile <-
     logger::log_debug("[create_lambda_dockerfile] Done.")
   }
 
+#' Fetch or create ecr repo
+#'
+#' @param tag a tag for the image
+#' @noRd
+fetch_ecr_repo <- function(tag) {
+  logger::log_debug("[fetch_ecr_repo] Checking if repository already exists.")
+  ecr_service <- aws_connect("ecr")
+
+  repos <- ecr_service$describe_repositories()$repositories
+  repos_names <- sapply(repos, "[[", "repositoryName")
+
+  if (tag %in% repos_names) {
+    logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
+    needed_repo <- repos_names == tag
+    repo_uri <- repos[needed_repo][[1]]$repositoryUri
+  } else {
+    logger::log_debug("[fetch_ecr_repo] Creating new repository and fetching URI.")
+    repo_meta <- ecr_service$create_repository(
+      repositoryName = tag,
+      imageScanningConfiguration = list(scanOnPush = TRUE)
+    )
+    repo_uri <- repo_meta$repository$repositoryUri
+  }
+  logger::log_debug("[fetch_ecr_repo] Done.")
+  return(repo_uri)
+}
+
 #' create_lambda_container
 #'
 #' @param folder path to the folder containing the lambda runtime script and Dockerfile
@@ -244,11 +275,13 @@ create_lambda_image <- function(folder, tag) {
     .var.name = "Check if file is empty."
   )
 
+  logger::log_debug("[create_lambda_image] Create or fetch a remote tag.")
+  repo_uri <- fetch_ecr_repo(tag = tag)
+
   logger::log_debug("[create_lambda_image] Building docker image.")
 
-  dockerfile <- file.path(folder, "Dockerfile")
-  docker_client <- stevedore::docker_client()
-  docker_client$image$build(context = folder, tag = paste0(tag,":latest"))
+  docker_cli <- stevedore::docker_client()
+  docker_cli$image$build(context = folder, tag = repo_uri)
 
   logger::log_debug("[create_lambda_image] Done.")
 }
@@ -258,45 +291,34 @@ create_lambda_image <- function(folder, tag) {
 #' @param tag the tag of an existing local image
 #' @noRd
 push_lambda_image <- function(tag) {
-
   logger::log_debug("[push_lambda_image] Validating inputs.")
   checkmate::assert_character(tag)
 
-  logger::log_debug("[push_lambda_image] Checking if repository already exists.")
-  ecr_service <- aws_connect("ecr")
-
-  repos <- ecr_service$describe_repositories()$repositories
-  repos_names <- sapply(repos, "[[", "repositoryName")
-
-  if (tag %in% repos_names) {
-    logger::log_debug("[push_lambda_image] Repository exists. Fetching URI.")
-    needed_repo <- repos_names == tag
-    repo_uri <- repos[needed_repo][[1]]$repositoryUri
-  } else {
-    logger::log_debug("[push_lambda_image] Creating new repository and fetching URI.")
-    repo_meta <- ecr_service$create_repository(
-      repositoryName = tag,
-      imageScanningConfiguration = list(scanOnPush = TRUE)
-    )
-    repo_uri <- repo_meta$repository$repositoryUri
-  }
-
-  logger::log_debug("[push_lambda_image] Tagging docker image.")
-
-  .tag_call <- glue::glue("docker tag {tag}:latest {repo_uri}:latest")
-  system(.tag_call)
-
   logger::log_debug("[push_lambda_image] Authenticating Docker with AWS ECR.")
 
-  aws_profile <- Sys.getenv("PROFILE")
-  aws_region <- Sys.getenv("REGION")
+  ecr_service <- aws_connect("ecr")
+  ecr_token <- ecr_service$get_authorization_token()
+  ecr_password <- parse_password(ecr_token$authorizationData[[1]]$authorizationToken)
+  repo_uri <- fetch_ecr_repo(tag)
+  server_address <- repo_uri %>% stringr::str_remove("/.*$")
 
-  .auth_call <- glue::glue("aws ecr get-login-password --region {aws_region} --profile {aws_profile} | docker login --username AWS --password-stdin {repo_uri}")
-  system(.auth_call)
+  docker_cli <- stevedore::docker_client()
+  docker_cli$login(username = "AWS",
+                   password = ecr_password,
+                   serveraddress = server_address)
 
   logger::log_debug("[push_lambda_image] Pushing Docker image to AWS ECR.")
-  .push_call <- glue::glue("docker push {repo_uri}:latest")
-  system(.push_call)
+
+  tryCatch(
+    expr = {
+      docker_cli$image$push(name = repo_uri)
+    },
+    error = function(e) {
+      Sys.sleep(2)
+      logger::log_debug("[push_lambda_image] Pushing Docker image to AWS ECR. Second try.")
+      docker_cli$image$push(name = repo_uri)
+    }
+  )
 
   logger::log_debug("[push_lambda_image] Done.")
   invisible(repo_uri)
