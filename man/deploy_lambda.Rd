@@ -26,14 +26,14 @@ deploy an R script to AWS Lambda
   dependencies <- NULL
 
   deploy_lambda(
-    tag = "parity-test1",
+    tag = "myrepo45",
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
     )
 
  invoke_lambda(
-   function_name = "parity-test1",
+   function_name = "myrepo45",
    payload = list(number = 3),
    invocation_type = "RequestResponse"
   )
