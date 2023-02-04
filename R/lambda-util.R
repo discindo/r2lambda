@@ -13,8 +13,8 @@ is_docker_installed <- function() {
 #' check_system_deps
 #' @noRd
 check_system_dependencies <- function() {
-  logger::log_debug("[check_system_dependencies] Checking if `aws cli` is installed.")
-  is_aws_cli_installed()
+  # logger::log_debug("[check_system_dependencies] Checking if `aws cli` is installed.")
+  # is_aws_cli_installed()
 
   logger::log_debug("[check_system_dependencies] Checking if `docker` is installed.")
   is_docker_installed()
