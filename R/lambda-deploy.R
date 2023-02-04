@@ -13,14 +13,14 @@
 #'   dependencies <- NULL
 #'
 #'   deploy_lambda(
-#'     tag = "parity-test1",
+#'     tag = "myrepo45",
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
 #'     dependencies = dependencies
 #'     )
 #'
 #'  invoke_lambda(
-#'    function_name = "parity-test1",
+#'    function_name = "myrepo45",
 #'    payload = list(number = 3),
 #'    invocation_type = "RequestResponse"
 #'   )
@@ -137,7 +137,7 @@ deploy_lambda <-
 
 #' invoke a lambda function
 #' @param function_name The name or arn of the function
-#' @param invocation_type One of ‘DryRun’, ‘RequestResponse’, or ‘Event’ see ?paws.compute::lambda_invoke
+#' @param invocation_type One of ‘DryRun’, ‘RequestResponse’, or ‘Event’ see `?paws.compute::lambda_invoke`
 #' @param payload A named list internally converted to json
 #' @param include_logs logical, whether to show the lambda logs (default: FALSE)
 #' @examples
