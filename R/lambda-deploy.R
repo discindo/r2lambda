@@ -1,9 +1,59 @@
-#' deploy an R script to AWS Lambda
+#' build and tag lambda image locally
 #'
 #' @param tag A name for the Docker container and Lambda function
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
 #' @param dependencies list of dependencies
+#'
+#' @export
+build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
+
+  logger::log_info("[build_lambda] Checking system dependencies.")
+  check_system_dependencies()
+
+  logger::log_info("[build_lambda] Creating temporary working directory.")
+  tdir <- tempdir()
+  folder <- file.path(tdir, tag)
+
+  logger::log_info("[build_lambda] Creating Dockerfile.")
+  tryCatch(
+    expr = {
+      create_lambda_dockerfile(
+        folder = folder,
+        runtime_function = runtime_function,
+        runtime_path = runtime_path,
+        dependencies = dependencies
+      )
+    },
+    error = function(e) {
+      msg <- "Failed to create a folder with Lambda Dockerfile and runtime script."
+      logger::log_error(msg)
+      rlang::abort(e$message)
+    }
+  )
+  logger::log_warn("[build_lambda] Created Dockerfile and lambda runtime script in temporary folder.")
+
+  logger::log_info("[build_lambda] Building Docker image.")
+  tryCatch(
+    expr = {
+      create_lambda_image(folder = folder, tag = tag)
+    },
+    error = function(e) {
+      msg <- "Failed to create Lambda Docker image."
+      logger::log_error(msg)
+      stop(e$message)
+    }
+  )
+  logger::log_warn("[build_lambda] Docker image built. This can take up substantial amount of disk space.")
+  logger::log_warn("[build_lambda] Use `docker image ls` in your shell to see the image size.")
+  logger::log_warn("[build_lambda] Use `docker rmi <image>` in your shell to remove an image.")
+
+  logger::log_success("[build_lambda] Done.")
+}
+
+#' deploy a local lambda image to AWS Lambda
+#'
+#' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
 #'
 #' @examples
 #' \dontrun{
@@ -12,64 +62,26 @@
 #'   runtime_path <- system.file("parity.R", package = "r2lambda")
 #'   dependencies <- NULL
 #'
-#'   deploy_lambda(
-#'     tag = "myrepo45",
+#'   build_lambda(
+#'     tag = "myrepo43",
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
 #'     dependencies = dependencies
 #'     )
 #'
-#'  invoke_lambda(
-#'    function_name = "myrepo45",
-#'    payload = list(number = 3),
-#'    invocation_type = "RequestResponse"
-#'   )
+#'   deploy_lambda(tag = "myrepo43")
+#'
+#'   invoke_lambda(
+#'     function_name = "myrepo43",
+#'     payload = list(number = 3),
+#'     invocation_type = "RequestResponse"
+#'     )
 #'
 #' }
 #' @export
 deploy_lambda <-
-  function(tag, runtime_function, runtime_path, dependencies) {
+  function(tag) {
     ## Inputs are validated by lower-level functions
-
-    logger::log_info("[deploy_lambda] Checking system dependencies.")
-    check_system_dependencies()
-
-    logger::log_info("[deploy_lambda] Creating temporary working directory.")
-    tdir <- tempdir()
-    folder <- file.path(tdir, tag)
-
-    logger::log_info("[deploy_lambda] Creating Dockerfile.")
-    tryCatch(
-      expr = {
-        create_lambda_dockerfile(
-          folder = folder,
-          runtime_function = runtime_function,
-          runtime_path = runtime_path,
-          dependencies = dependencies
-        )
-      },
-      error = function(e) {
-        msg <- "Failed to create a folder with Lambda Dockerfile and runtime script."
-        logger::log_error(msg)
-        rlang::abort(e$message)
-      }
-    )
-    logger::log_warn("[deploy_lambda] Created Dockerfile and lambda runtime script in temporary folder.")
-
-    logger::log_info("[deploy_lambda] Building Docker image.")
-    tryCatch(
-      expr = {
-        create_lambda_image(folder = folder, tag = tag)
-      },
-      error = function(e) {
-        msg <- "Failed to create Lambda Docker image."
-        logger::log_error(msg)
-        stop(e$message)
-      }
-    )
-    logger::log_warn("[deploy_lambda] Docker image built. This can take up substantial amount of disk space.")
-    logger::log_warn("[deploy_lambda] Use `docker image ls` in your shell to see the image size.")
-    logger::log_warn("[deploy_lambda] Use `docker rmi <image>` in your shell to remove an image.")
 
     logger::log_info("[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while.")
     ecr_image_uri <- tryCatch(
@@ -83,20 +95,29 @@ deploy_lambda <-
       }
     )
 
-    logger::log_warn("[deploy_lambda] Docker image pushed to ECR. This can take up substantial resources and incur cost.")
-    logger::log_warn("[deploy_lambda] Use `paws::ecr()`, the AWS CLI, or the AWS console to manage your images.")
+    logger::log_warn(
+      "[deploy_lambda] Docker image pushed to ECR. This can take up substantial resources and incur cost."
+    )
+    logger::log_warn(
+      "[deploy_lambda] Use `paws::ecr()`, the AWS CLI, or the AWS console to manage your images."
+    )
 
     logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")
-    iam_lambda_role <- tryCatch(expr = {
-      create_lambda_exec_role(tag = tag)
-    }, error = function(e) {
-      msg <- "Failed to create Lambda execution role in AWS IAM."
-      logger::log_error(msg)
-      stop(e$message)
-    })
+    iam_lambda_role <- tryCatch(
+      expr = {
+        create_lambda_exec_role(tag = tag)
+      },
+      error = function(e) {
+        msg <- "Failed to create Lambda execution role in AWS IAM."
+        logger::log_error(msg)
+        stop(e$message)
+      }
+    )
 
     logger::log_warn("[deploy_lambda] Created AWS role with basic lambda execution permissions.")
-    logger::log_warn("[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions.")
+    logger::log_warn(
+      "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions."
+    )
 
     ## TODO check if the role is OK before starting to create the lambda function
     ## As is, we are waiting ten seconds before creating the lambda
@@ -118,21 +139,37 @@ deploy_lambda <-
         stop(msg)
       }
     )
-    logger::log_warn("[deploy_lambda] Lambda function created. This can take up substantial resources and incur cost.")
-    logger::log_warn("[deploy_lambda] Use `paws::lambda()`, the AWS CLI, or the AWS console to manage your functions.")
+    logger::log_warn(
+      "[deploy_lambda] Lambda function created. This can take up substantial resources and incur cost."
+    )
+    logger::log_warn(
+      "[deploy_lambda] Use `paws::lambda()`, the AWS CLI, or the AWS console to manage your functions."
+    )
 
     logger::log_warn("[deploy_lambda] Lambda function created successfully.")
-    logger::log_warn(glue::glue("[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"))
-    logger::log_warn(glue::glue("[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`"))
-    logger::log_warn(glue::glue("[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`"))
+    logger::log_warn(glue::glue(
+      "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
+    ))
+    logger::log_warn(
+      glue::glue(
+        "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`"
+      )
+    )
+    logger::log_warn(
+      glue::glue(
+        "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`"
+      )
+    )
 
     logger::log_success("[deploy_lambda] Done.")
 
-    invisible(list(
-      ECR_image_uri = ecr_image_uri,
-      IAM_lambda_role_arn = iam_lambda_role$Role$Arn,
-      Lambda_function_arn = lambda$FunctionArn
-    ))
+    invisible(
+      list(
+        ECR_image_uri = ecr_image_uri,
+        IAM_lambda_role_arn = iam_lambda_role$Role$Arn,
+        Lambda_function_arn = lambda$FunctionArn
+      )
+    )
   }
 
 #' invoke a lambda function
@@ -158,7 +195,7 @@ invoke_lambda <-
     logger::log_info("[invoke_lambda] Validating inputs.")
 
     # assumes .Renviron is set up
-    lambda_service <- aws_connect(paws::lambda)
+    lambda_service <- aws_connect("lambda")
 
     logger::log_info("[invoke_lambda] Invoking function.")
     response <- lambda_service$invoke(
@@ -170,7 +207,7 @@ invoke_lambda <-
 
     message("\nLambda response payload: ")
     response$Payload |> rawToChar() |> cat()
-    cat()
+    cat("")
 
     if (include_logs) {
       message("\nLambda logs: ")
