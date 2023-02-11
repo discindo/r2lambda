@@ -180,7 +180,7 @@ deploy_lambda <-
 #' @examples
 #' \dontrun{
 #'   invoke_lambda(
-#'    function_name = "lambda-test88",
+#'    function_name = "parity",
 #'    payload = list(number = 3),
 #'    invocation_type = "RequestResponse"
 #'   )
@@ -202,14 +202,18 @@ invoke_lambda <-
     ## TODO: Should we also check `LastUpdateStatus` (https://docs.aws.amazon.com/lambda/latest/dg/functions-states.html)
 
     if (state == "Active" || state == "Inactive") {
+      # if its inactive, ping it still, to activate it
+      # it might fail to run, but the error message should clarify next steps
       logger::log_info("[invoke_lambda] Function state: {state}.")
       logger::log_info("[invoke_lambda] Invoking function.")
-      response <- lambda_service$invoke(
+      response <- tryCatch(
+        lambda_service$invoke(
         FunctionName = function_name,
         InvocationType = invocation_type,
         Payload = jsonlite::toJSON(payload),
         LogType = ifelse(include_logs, "Tail", "None")
-      )
+      ), error = function(e) e$message)
+
     } else {
       logger::log_info(glue::glue("[invoke_lambda] Failed to invoke the function due to {state} state."))
       logger::log_info("[invoke_lambda] Please try again shortly if the reported state was `Pending`.")
