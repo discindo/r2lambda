@@ -41,7 +41,7 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
     error = function(e) {
       msg <- "Failed to create Lambda Docker image."
       logger::log_error(msg)
-      stop(e$message)
+      rlang::abort(e$message)
     }
   )
   logger::log_warn("[build_lambda] Docker image built. This can take up substantial amount of disk space.")
@@ -63,16 +63,16 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
 #'   dependencies <- NULL
 #'
 #'   build_lambda(
-#'     tag = "myrepo43",
+#'     tag = "myrepo41",
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
 #'     dependencies = dependencies
 #'     )
 #'
-#'   deploy_lambda(tag = "myrepo43")
+#'   deploy_lambda(tag = "myrepo41")
 #'
 #'   invoke_lambda(
-#'     function_name = "myrepo43",
+#'     function_name = "myrepo41",
 #'     payload = list(number = 3),
 #'     invocation_type = "RequestResponse"
 #'     )
@@ -91,7 +91,7 @@ deploy_lambda <-
       error = function(e) {
         msg <- "Failed to push Lambda Docker image to AWS ECR."
         logger::log_error(msg)
-        stop(e$message)
+        rlang::abort(e$message)
       }
     )
 
@@ -110,7 +110,7 @@ deploy_lambda <-
       error = function(e) {
         msg <- "Failed to create Lambda execution role in AWS IAM."
         logger::log_error(msg)
-        stop(e$message)
+        rlang::abort(e$message)
       }
     )
 
@@ -136,7 +136,7 @@ deploy_lambda <-
       error = function(e) {
         msg <- "Failed to push Lambda Docker image to AWS ECR."
         logger::log_error(msg)
-        stop(msg)
+        rlang::abort(msg)
       }
     )
     logger::log_warn(
