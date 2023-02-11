@@ -63,16 +63,16 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
 #'   dependencies <- NULL
 #'
 #'   build_lambda(
-#'     tag = "myrepo41",
+#'     tag = "myrepo52",
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
 #'     dependencies = dependencies
 #'     )
 #'
-#'   deploy_lambda(tag = "myrepo41")
+#'   deploy_lambda(tag = "myrepo52")
 #'
 #'   invoke_lambda(
-#'     function_name = "myrepo41",
+#'     function_name = "myrepo52",
 #'     payload = list(number = 3),
 #'     invocation_type = "RequestResponse"
 #'     )
@@ -197,17 +197,27 @@ invoke_lambda <-
     # assumes .Renviron is set up
     lambda_service <- aws_connect("lambda")
 
-    logger::log_info("[invoke_lambda] Invoking function.")
-    response <- lambda_service$invoke(
-      FunctionName = function_name,
-      InvocationType = invocation_type,
-      Payload = jsonlite::toJSON(payload),
-      LogType = ifelse(include_logs, "Tail", "None")
-    )
+    logger::log_info("[invoke_lambda] Checking function state.")
+    state <- lambda_service$get_function(FunctionName = function_name)$Configuration$State
+    ## TODO: Should we also check `LastUpdateStatus` (https://docs.aws.amazon.com/lambda/latest/dg/functions-states.html)
+
+    if (state == "Active" || state == "Inactive") {
+      logger::log_info("[invoke_lambda] Function state: {state}.")
+      logger::log_info("[invoke_lambda] Invoking function.")
+      response <- lambda_service$invoke(
+        FunctionName = function_name,
+        InvocationType = invocation_type,
+        Payload = jsonlite::toJSON(payload),
+        LogType = ifelse(include_logs, "Tail", "None")
+      )
+    } else {
+      logger::log_info(glue::glue("[invoke_lambda] Failed to invoke the function due to {state} state."))
+      logger::log_info("[invoke_lambda] Please try again shortly if the reported state was `Pending`.")
+    }
 
     message("\nLambda response payload: ")
     response$Payload |> rawToChar() |> cat()
-    cat("")
+    cat("\n")
 
     if (include_logs) {
       message("\nLambda logs: ")
