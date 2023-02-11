@@ -2,21 +2,15 @@
 % Please edit documentation in R/lambda-deploy.R
 \name{deploy_lambda}
 \alias{deploy_lambda}
-\title{deploy an R script to AWS Lambda}
+\title{deploy a local lambda image to AWS Lambda}
 \usage{
-deploy_lambda(tag, runtime_function, runtime_path, dependencies)
+deploy_lambda(tag)
 }
 \arguments{
-\item{tag}{A name for the Docker container and Lambda function}
-
-\item{runtime_function}{name of the runtime function}
-
-\item{runtime_path}{path to the script containing the runtime function}
-
-\item{dependencies}{list of dependencies}
+\item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`)}
 }
 \description{
-deploy an R script to AWS Lambda
+deploy a local lambda image to AWS Lambda
 }
 \examples{
 \dontrun{
@@ -25,18 +19,20 @@ deploy an R script to AWS Lambda
   runtime_path <- system.file("parity.R", package = "r2lambda")
   dependencies <- NULL
 
-  deploy_lambda(
+  build_lambda(
     tag = "myrepo45",
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
     )
 
- invoke_lambda(
-   function_name = "myrepo45",
-   payload = list(number = 3),
-   invocation_type = "RequestResponse"
-  )
+  deploy_lambda(tag = "myrepo45")
+
+  invoke_lambda(
+    function_name = "myrepo45",
+    payload = list(number = 3),
+    invocation_type = "RequestResponse"
+    )
 
 }
 }
