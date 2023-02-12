@@ -71,13 +71,17 @@ test_lambda <- function(tag, payload) {
   logger::log_info("[test_lambda] Starting docker client.")
   docker_cli <- stevedore::docker_client()
 
+  logger::log_info("[test_lambda] Fetching remote tag.")
+  repo_uri <- fetch_ecr_repo("parity1")
+  repo_tag <- paste0(repo_uri, ':latest')
+
   logger::log_info("[test_lambda] Checking image tag exists.")
   images <- docker_cli$image$list()
   tags <- images[["repo_tags"]] %>% unlist()
-  tag_exists <- tag %in% tags
+  tag_exists <- repo_tag %in% tags
 
   if (!tag_exists) {
-    msg <- glue::glue("[test_lambda] Image tagged {tag} not found.")
+    msg <- glue::glue("[test_lambda] Image tagged {repo_tag} not found.")
     logger::log_error(msg)
     message("Available images:\n", glue::glue_collapse(sep = "\n", tags))
     rlang::abort(msg)
@@ -86,7 +90,7 @@ test_lambda <- function(tag, payload) {
   uid <- uuid::UUIDgenerate(1)
   logger::log_info(glue::glue("[test_lambda] Starting lambda container with name {uid}."))
   docker_cli$container$run(
-    image = "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51",
+    image = repo_tag,
     port = "9000:8080",
     detach = TRUE,
     name = uid
