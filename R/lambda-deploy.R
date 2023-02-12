@@ -51,6 +51,67 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
   logger::log_success("[build_lambda] Done.")
 }
 
+#' test a lambda locally
+#'
+#' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
+#' @param payload Named list. Arguments to lambda function.
+#'
+#' @examples
+#'
+#' payload <- list(number = 2)
+#' tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
+#' test_lambda(tag, payload)
+#'
+#' @export
+test_lambda <- function(tag, payload) {
+
+  logger::log_info("[test_lambda] Converting payload list to json.")
+  payload <- jsonlite::toJSON(payload, auto_unbox = TRUE)
+
+  logger::log_info("[test_lambda] Starting docker client.")
+  docker_cli <- stevedore::docker_client()
+
+  logger::log_info("[test_lambda] Checking image tag exists.")
+  images <- docker_cli$image$list()
+  tags <- images[["repo_tags"]] %>% unlist()
+  tag_exists <- tag %in% tags
+
+  if (!tag_exists) {
+    msg <- glue::glue("[test_lambda] Image tagged {tag} not found.")
+    logger::log_error(msg)
+    message("Available images:\n", glue::glue_collapse(sep = "\n", tags))
+    rlang::abort(msg)
+  }
+
+  uid <- uuid::UUIDgenerate(1)
+  logger::log_info(glue::glue("[test_lambda] Starting lambda container with name {uid}."))
+  docker_cli$container$run(
+    image = "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51",
+    port = "9000:8080",
+    detach = TRUE,
+    name = uid
+  )
+
+  logger::log_info("[test_lambda] Invoking local lambda instance.")
+  arg <- c("-XPOST", "http://localhost:9000/2015-03-31/functions/function/invocations", "-d", payload)
+  response <- sys::exec_internal(cmd = "curl", args = arg)
+  message("Response standard output:\n")
+  response$stdout |> rawToChar() |> cat()
+  cat("\n")
+  message("Response standard error:\n")
+  response$stderr |> rawToChar() |> cat()
+  cat("\n")
+
+  logger::log_info("[test_lambda] Stopping running lambda container.")
+  running_containers <- docker_cli$container$list()
+  to_stop <- running_containers[running_containers$name == uid][["id"]]
+  docker_cli$container$remove(id = to_stop, force = TRUE)
+
+  logger::log_success("[test_lambda] Done.")
+  invisible(response)
+}
+
+
 #' deploy a local lambda image to AWS Lambda
 #'
 #' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
