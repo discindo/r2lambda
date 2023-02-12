@@ -60,8 +60,8 @@ build_lambda(
 
 ``` r
 payload <- list(number = 2)
-tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/parity1:latest"
-test_lambda(tag, payload)
+tag <- "parity1"
+test_lambda(tag = "parity1", payload)
 ```
 
 ### Deploy to AWS Lambda
