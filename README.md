@@ -38,23 +38,44 @@ services are available in the `R` session. This is typically done via an
     PROFILE = "YOUR AWS PROFILE"
     REGION = "YOUR AWS REGION"
 
-## Run
+## Workflow
+
+### Build a docker image for the lambda function
 
 ``` r
 runtime_function <- "parity"
 runtime_path <- system.file("parity.R", package = "r2lambda")
 dependencies <- NULL
 
-# Might take a while, its building Docker image and pushing it to a remote repository
-deploy_lambda(
-  tag = "lambda-test",
-  runtime_function = runtime_function,
-  runtime_path = runtime_path,
-  dependencies = dependencies
-  )
+# Might take a while, its building a docker image
+build_lambda(
+ tag = "parity1",
+ runtime_function = runtime_function,
+ runtime_path = runtime_path,
+ dependencies = dependencies
+ )
+```
 
+### Test the lambda docker image locally
+
+``` r
+payload <- list(number = 2)
+tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/parity1:latest"
+test_lambda(tag, payload)
+```
+
+### Deploy to AWS Lambda
+
+``` r
+# Might take a while, its pushing it to a remote repository
+deploy_lambda(tag = "parity1")
+```
+
+### Invoke deployed lambda
+
+``` r
 invoke_lambda(
-  function_name = "lambda-test",
+  function_name = "parity1",
   invocation_type = "RequestResponse",
   payload = list(number = 2),
   include_logs = FALSE
