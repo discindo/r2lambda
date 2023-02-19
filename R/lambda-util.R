@@ -357,6 +357,7 @@ create_lambda_exec_role <- function(tag) {
 #' delete_lambda_exec_role
 #' @noRd
 delete_lambda_exec_role <- function(tag) {
+  ## TODO: this probably won't work as there is a policy attached to the role
   iam_service <- aws_connect("iam")
   iam_service$delete_role(
     RoleName = tag
