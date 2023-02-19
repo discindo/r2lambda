@@ -1,6 +1,6 @@
 FROM public.ecr.aws/lambda/provided
 
-ENV R_VERSION=4.0.3
+ENV R_VERSION=4.2.2
 
 RUN yum -y install wget git tar
 

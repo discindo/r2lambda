@@ -49,23 +49,44 @@ PROFILE = "YOUR AWS PROFILE"
 REGION = "YOUR AWS REGION"
 ```
 
-## Run
+## Workflow
+
+### Build a docker image for the lambda function
 
 ```{r, eval = FALSE}
 runtime_function <- "parity"
 runtime_path <- system.file("parity.R", package = "r2lambda")
 dependencies <- NULL
 
-# Might take a while, its building Docker image and pushing it to a remote repository
-deploy_lambda(
-  tag = "lambda-test",
-  runtime_function = runtime_function,
-  runtime_path = runtime_path,
-  dependencies = dependencies
-  )
+# Might take a while, its building a docker image
+build_lambda(
+ tag = "parity1",
+ runtime_function = runtime_function,
+ runtime_path = runtime_path,
+ dependencies = dependencies
+ )
+```
 
+### Test the lambda docker image locally
+
+```{r, eval = FALSE}
+payload <- list(number = 2)
+tag <- "parity1"
+test_lambda(tag = "parity1", payload)
+```
+
+### Deploy to AWS Lambda
+
+```{r, eval = FALSE}
+# Might take a while, its pushing it to a remote repository
+deploy_lambda(tag = "parity1")
+```
+
+### Invoke deployed lambda
+
+```{r, eval = FALSE}
 invoke_lambda(
-  function_name = "lambda-test",
+  function_name = "parity1",
   invocation_type = "RequestResponse",
   payload = list(number = 2),
   include_logs = FALSE
@@ -73,6 +94,10 @@ invoke_lambda(
 
 #> Lambda response payload: 
 #> {"parity":"even"}
-
 ```
 
+## Code of Conduct
+
+Please note that the r2lambda project is released with a 
+[Contributor Code of Conduct](https://contributor-covenant.org/version/2/1/CODE_OF_CONDUCT.html). By 
+contributing to this project, you agree to abide by its terms.
