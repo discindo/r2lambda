@@ -72,7 +72,7 @@ test_lambda <- function(tag, payload) {
   docker_cli <- stevedore::docker_client()
 
   logger::log_info("[test_lambda] Fetching remote tag.")
-  repo_uri <- fetch_ecr_repo("parity1")
+  repo_uri <- fetch_ecr_repo(tag)
   repo_tag <- paste0(repo_uri, ':latest')
 
   logger::log_info("[test_lambda] Checking image tag exists.")
@@ -119,6 +119,7 @@ test_lambda <- function(tag, payload) {
 #' deploy a local lambda image to AWS Lambda
 #'
 #' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
+#' @param ... Arguments passed onto `create_lambda_function`
 #'
 #' @examples
 #' \dontrun{
@@ -145,7 +146,7 @@ test_lambda <- function(tag, payload) {
 #' }
 #' @export
 deploy_lambda <-
-  function(tag) {
+  function(tag, ...) {
     ## Inputs are validated by lower-level functions
 
     logger::log_info("[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while.")
@@ -195,7 +196,8 @@ deploy_lambda <-
         create_lambda_function(
           tag = tag,
           ecr_image_uri = ecr_image_uri,
-          lambda_role_arn = iam_lambda_role$Role$Arn
+          lambda_role_arn = iam_lambda_role$Role$Arn,
+          ...
         )
       },
       error = function(e) {
