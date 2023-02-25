@@ -21,7 +21,7 @@ invoke a lambda function
 \examples{
 \dontrun{
   invoke_lambda(
-   function_name = "lambda-test88",
+   function_name = "parity",
    payload = list(number = 3),
    invocation_type = "RequestResponse"
   )
