@@ -20,16 +20,16 @@ deploy a local lambda image to AWS Lambda
   dependencies <- NULL
 
   build_lambda(
-    tag = "myrepo45",
+    tag = "myrepo52",
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
     )
 
-  deploy_lambda(tag = "myrepo45")
+  deploy_lambda(tag = "myrepo52")
 
   invoke_lambda(
-    function_name = "myrepo45",
+    function_name = "myrepo52",
     payload = list(number = 3),
     invocation_type = "RequestResponse"
     )
