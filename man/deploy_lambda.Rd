@@ -4,10 +4,12 @@
 \alias{deploy_lambda}
 \title{deploy a local lambda image to AWS Lambda}
 \usage{
-deploy_lambda(tag)
+deploy_lambda(tag, ...)
 }
 \arguments{
 \item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`)}
+
+\item{...}{Arguments passed onto `create_lambda_function`}
 }
 \description{
 deploy a local lambda image to AWS Lambda
@@ -20,16 +22,16 @@ deploy a local lambda image to AWS Lambda
   dependencies <- NULL
 
   build_lambda(
-    tag = "myrepo45",
+    tag = "myrepo52",
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
     )
 
-  deploy_lambda(tag = "myrepo45")
+  deploy_lambda(tag = "myrepo52")
 
   invoke_lambda(
-    function_name = "myrepo45",
+    function_name = "myrepo52",
     payload = list(number = 3),
     invocation_type = "RequestResponse"
     )

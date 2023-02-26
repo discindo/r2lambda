@@ -200,7 +200,7 @@ create_lambda_dockerfile <-
     logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
 
     if (!is.null(dependencies)) {
-      deps_string <- install_deps_line(deps = c("dplyr"))
+      deps_string <- install_deps_line(deps = c(dependencies))
       write(deps_string,
             file = file.path(folder, "Dockerfile"),
             append = TRUE)
@@ -369,9 +369,12 @@ delete_lambda_exec_role <- function(tag) {
 #' @param tag the tag of an existing local image
 #' @param ecr_image_uri the URI of the image to use
 #' @param lambda_role_arn the arn of the execution role created for this lambda
+#' @param ... arguments passed onto `paws.compute:::lambda_create_function()`.
+#' For example `Timeout` to increase the execution time, and `MemorySize` to request
+#' more memory
+#'
 #' @noRd
-
-create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
+create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn, ...) {
 
   logger::log_debug("[create_lambda_function] Validating inputs.")
   checkmate::assert_character(tag)
@@ -383,6 +386,7 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn) {
     Code = list(ImageUri = glue::glue("{ecr_image_uri}:latest")),
     PackageType = "Image",
     Role = lambda_role_arn,
+    ...
     ## TODO: Logic to set env vars if deployed lambda needs them
     # Environment = list(Variables = list(
     #   REGION = Sys.getenv("REGION"),
