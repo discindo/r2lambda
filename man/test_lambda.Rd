@@ -15,9 +15,10 @@ test_lambda(tag, payload)
 test a lambda locally
 }
 \examples{
-
-payload <- list(number = 2)
-tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
-test_lambda(tag, payload)
+\dontrun{
+  payload <- list(number = 2)
+  tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
+  test_lambda(tag, payload)
+}
 
 }

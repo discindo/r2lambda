@@ -57,10 +57,11 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
 #' @param payload Named list. Arguments to lambda function.
 #'
 #' @examples
-#'
-#' payload <- list(number = 2)
-#' tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
-#' test_lambda(tag, payload)
+#' \dontrun{
+#'   payload <- list(number = 2)
+#'   tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
+#'   test_lambda(tag, payload)
+#' }
 #'
 #' @export
 test_lambda <- function(tag, payload) {
