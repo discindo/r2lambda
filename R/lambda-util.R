@@ -29,7 +29,7 @@ check_system_dependencies <- function() {
 #' \dontrun{
 #'   aws_connect("lambda")
 #'   }
-#' @noRd
+#' @export
 aws_connect <- function(service) {
 
   logger::log_debug("[aws_connect] Checking env vars.")
@@ -402,9 +402,67 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn, ...) {
 
 #' delete_lambda_function
 #' @noRd
+
 delete_lambda_function <- function(tag) {
   lambda_service <- aws_connect("lambda")
   lambda_service$delete_function(
     FunctionName = tag
   )
 }
+
+#' Create a rule for event schedule
+#'
+#' @param rule_name character, the name of the rule (used later when adding targets to the event)
+#' @param rate character, the rate at which we want the function to run, e.g., `5 minutes`, `1 minute`
+#'
+#' @noRd
+create_event_rule_for_schedule <- function(rule_name, rate) {
+  logger::log_debug("[create_event_rule_for_schedule] Creating rule for event schedule.")
+
+  aws_event <- aws_connect("eventbridge")
+  rule <- aws_event$put_rule(Name = rule_name,
+                             ScheduleExpression = rate)
+  logger::log_debug("[create_event_rule_for_schedule] Done.")
+  return(rule$RuleArn)
+}
+
+#' Add permission for event to invoke lambda
+#'
+#' @param function_name character, the name of the lambda function we wish to schedule
+#' @param scheduled_event_name character, a name for our event
+#' @param scheduled_rule_arn character, the ARN of the scheduled event role (as
+#' returned from `create_event_rule_for_schedule`)
+#'
+#' @noRd
+lambda_add_permission_for_schedule <-
+  function(function_name,
+           scheduled_event_name,
+           scheduled_rule_arn) {
+
+    logger::log_debug("[lambda_add_permission_for_schedule] Adding permission for event schedule.")
+    aws_lambda <- aws_connect("lambda")
+    aws_lambda$add_permission(
+      FunctionName = function_name,
+      StatementId = scheduled_event_name,
+      Action = "lambda:InvokeFunction",
+      Principal = "events.amazonaws.com",
+      SourceArn = scheduled_rule_arn
+    )
+    logger::log_debug("[lambda_add_permission_for_schedule] Done.")
+  }
+
+#' Add lambda to eventbridge rule
+#'
+#' @param rule_name character, the name of the rule
+#' @param lambda_function_arn character, the ARN of the lambda function
+#'
+#' @noRd
+add_lambda_to_eventridge <-
+  function(rule_name, lambda_function_arn) {
+    logger::log_debug("[add_lambda_to_eventridge] Adding lambda function to events.")
+    aws_event <- aws_connect("eventbridge")
+    aws_event$put_targets(Rule = rule_name, Targets = list(list(Id = 1, Arn = lambda_function_arn)))
+    logger::log_debug("[add_lambda_to_eventridge] Done.")
+  }
+
+
