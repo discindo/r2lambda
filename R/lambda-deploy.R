@@ -298,3 +298,76 @@ invoke_lambda <-
     logger::log_success("[invoke_lambda] Done.")
     invisible(response)
   }
+
+#' Put a deployed lambda function on a schedule
+#'
+#' @param lambda_function character, the name (or tag) of the function. A check
+#' is done internally make sure the Lambda exists and fetch its ARN.
+#' @param execution_rate character, the rate to run the lambda function. Can use
+#' `rate` or `cron` specification. For details consult the official documentation:
+#' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html
+#'
+#' @examples
+#' \dontrun{
+#'   # Make Tidytuesday lambda fetch the Tidytuesday dataset every wednesday at 8 am
+#'   schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+#' }
+#'
+#' @export
+
+schedule_lambda <- function(lambda_function, execution_rate) {
+
+  logger::log_info("[schedule_lambda] Validating inputs.")
+  aws_lambda <- aws_connect("lambda")
+  fun_list <- aws_lambda$list_functions()
+  lambda_names <- sapply(fun_list$Functions, "[[", "FunctionName")
+
+  if (!lambda_function %in% lambda_names) {
+    msg <- glue::glue("[schedule_lambda] Cannot find deployed lambda function {lambda_function}")
+    logger::log_error(msg)
+    rlang::abort(msg)
+  }
+
+  logger::log_info("[schedule_lambda] Found lambda function {lambda_function}. Fetching ARN.")
+  lambda_index <- which(lambda_function == lambda_names)
+  lambda_function_arn <- fun_list$Functions[[lambda_index]]$FunctionArn
+
+  rate_clean <- gsub("\\(|\\)| ", "_", execution_rate)
+  rule_name <- glue::glue("schedule_rule_{rate_clean}_{lambda_function}")
+  logger::log_info("[schedule_lambda] Creating event schedule rule with name {rule_name}")
+  rule_arn <- tryCatch(
+    expr = {
+      create_event_rule_for_schedule(rule_name = rule_name, rate = execution_rate)
+    },
+    error = function(e)
+      e$message
+  )
+
+  event_name <- glue::glue("schedule_event_{rate_clean}_{lambda_function}")
+  logger::log_info("[schedule_lambda] Adding permission to execute lambda to event with name {event_name}")
+  tryCatch(
+    expr = {
+      lambda_add_permission_for_schedule(
+        function_name = lambda_function,
+        scheduled_event_name = event_name,
+        scheduled_rule_arn = rule_arn
+      )
+    },
+    error = function(e)
+      e$message
+  )
+
+  logger::log_info("[schedule_lambda] Adding lambda function {lambda_function} to eventbridge schedule.")
+  tryCatch(
+    expr = {
+      add_lambda_to_eventridge(
+        rule_name = rule_name,
+        lambda_function_arn = lambda_function_arn
+      )
+    },
+    error = function(e)
+      e$message
+  )
+
+  logger::log_info("[schedule_lambda] Done.")
+}
