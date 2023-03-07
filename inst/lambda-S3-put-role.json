@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ExampleStmt",
+      "Action": [
+        "s3:putObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::AWSDOC-EXAMPLE-BUCKET/*"
+      ]
+    }
+  ]
+}
