@@ -31,6 +31,9 @@ check_system_dependencies <- function() {
 #'   }
 #' @export
 aws_connect <- function(service) {
+  ## TODO: This function is unnecessary, or too complicated
+  ##       Simply running paws::s3() has the same effect as all the code below
+  ##       because paws is smart enough to find credentials in envvars, iams, etc.
 
   logger::log_debug("[aws_connect] Checking env vars.")
 
