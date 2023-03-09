@@ -436,8 +436,19 @@ create_event_rule_for_schedule <- function(rule_name, rate) {
   logger::log_debug("[create_event_rule_for_schedule] Creating rule for event schedule.")
 
   aws_event <- aws_connect("eventbridge")
-  rule <- aws_event$put_rule(Name = rule_name,
-                             ScheduleExpression = rate)
+
+  rule <- tryCatch(
+    expr = {
+      aws_event$put_rule(Name = rule_name,
+                         ScheduleExpression = rate)
+    },
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
+
+  )
+
   logger::log_debug("[create_event_rule_for_schedule] Done.")
   return(rule$RuleArn)
 }
