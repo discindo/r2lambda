@@ -120,6 +120,10 @@ test_lambda <- function(tag, payload) {
 #' deploy a local lambda image to AWS Lambda
 #'
 #' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
+#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
+#' deployed Lambda environment (default = `FALSE`). This is useful if the Lambda needs to access
+#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
+#' `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
 #' @param ... Arguments passed onto `create_lambda_function`
 #'
 #' @examples
@@ -147,7 +151,7 @@ test_lambda <- function(tag, payload) {
 #' }
 #' @export
 deploy_lambda <-
-  function(tag, ...) {
+  function(tag, set_aws_envvars = FALSE, ...) {
     ## Inputs are validated by lower-level functions
 
     logger::log_info("[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while.")
@@ -198,6 +202,7 @@ deploy_lambda <-
           tag = tag,
           ecr_image_uri = ecr_image_uri,
           lambda_role_arn = iam_lambda_role$Role$Arn,
+          set_aws_envvars = set_aws_envvars,
           ...
         )
       },
@@ -332,15 +337,18 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   lambda_index <- which(lambda_function == lambda_names)
   lambda_function_arn <- fun_list$Functions[[lambda_index]]$FunctionArn
 
-  rate_clean <- gsub("\\(|\\)| ", "_", execution_rate)
+  rate_clean <- gsub("\\(|\\)| |\\*|\\?", "_", execution_rate)
   rule_name <- glue::glue("schedule_rule_{rate_clean}_{lambda_function}")
   logger::log_info("[schedule_lambda] Creating event schedule rule with name {rule_name}")
+
   rule_arn <- tryCatch(
     expr = {
       create_event_rule_for_schedule(rule_name = rule_name, rate = execution_rate)
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   event_name <- glue::glue("schedule_event_{rate_clean}_{lambda_function}")
@@ -353,8 +361,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
         scheduled_rule_arn = rule_arn
       )
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   logger::log_info("[schedule_lambda] Adding lambda function {lambda_function} to eventbridge schedule.")
@@ -365,8 +375,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
         lambda_function_arn = lambda_function_arn
       )
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   logger::log_info("[schedule_lambda] Done.")
