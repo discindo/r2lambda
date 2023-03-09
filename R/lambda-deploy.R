@@ -337,15 +337,18 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   lambda_index <- which(lambda_function == lambda_names)
   lambda_function_arn <- fun_list$Functions[[lambda_index]]$FunctionArn
 
-  rate_clean <- gsub("\\(|\\)| ", "_", execution_rate)
+  rate_clean <- gsub("\\(|\\)| |\\*|\\?", "_", execution_rate)
   rule_name <- glue::glue("schedule_rule_{rate_clean}_{lambda_function}")
   logger::log_info("[schedule_lambda] Creating event schedule rule with name {rule_name}")
+
   rule_arn <- tryCatch(
     expr = {
       create_event_rule_for_schedule(rule_name = rule_name, rate = execution_rate)
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   event_name <- glue::glue("schedule_event_{rate_clean}_{lambda_function}")
@@ -358,8 +361,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
         scheduled_rule_arn = rule_arn
       )
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   logger::log_info("[schedule_lambda] Adding lambda function {lambda_function} to eventbridge schedule.")
@@ -370,8 +375,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
         lambda_function_arn = lambda_function_arn
       )
     },
-    error = function(e)
-      e$message
+    error = function(e) {
+      logger::log_error(e$message)
+      rlang::abort(e$message)
+    }
   )
 
   logger::log_info("[schedule_lambda] Done.")
