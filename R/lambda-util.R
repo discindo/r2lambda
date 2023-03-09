@@ -178,7 +178,6 @@ create_lambda_dockerfile <-
     checkmate::assert_character(
       x = dependencies,
       min.chars = 1,
-      len = 1,
       null.ok = TRUE
     )
 
@@ -369,15 +368,39 @@ delete_lambda_exec_role <- function(tag) {
 #' @param tag the tag of an existing local image
 #' @param ecr_image_uri the URI of the image to use
 #' @param lambda_role_arn the arn of the execution role created for this lambda
+#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
+#' deployed Lambda environment. This is useful if the Lambda needs to access
+#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
+#' `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
+#'
 #' @param ... arguments passed onto `paws.compute:::lambda_create_function()`.
 #' For example `Timeout` to increase the execution time, and `MemorySize` to request
 #' more memory
 #'
 #' @noRd
-create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn, ...) {
+create_lambda_function <-
+  function(tag,
+           ecr_image_uri,
+           lambda_role_arn,
+           set_aws_envvars = FALSE,
+           ...) {
 
   logger::log_debug("[create_lambda_function] Validating inputs.")
   checkmate::assert_character(tag)
+
+  envvar_list <- list(Variables = list())
+
+  ## TODO: enable adding arbitrary envvars
+  if (isTRUE(set_aws_envvars)) {
+    envvar_list <- list(
+      Variables = list(
+        REGION = Sys.getenv("REGION"),
+        PROFILE = Sys.getenv("PROFILE"),
+        SECRET_ACCESS_KEY = Sys.getenv("SECRET_ACCESS_KEY"),
+        ACCESS_KEY_ID = Sys.getenv("ACCESS_KEY_ID")
+      )
+    )
+  }
 
   logger::log_debug("[create_lambda_function] Creating lambda function.")
   lambda_service <- aws_connect("lambda")
@@ -386,14 +409,8 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn, ...) {
     Code = list(ImageUri = glue::glue("{ecr_image_uri}:latest")),
     PackageType = "Image",
     Role = lambda_role_arn,
+    Environment = envvar_list,
     ...
-    ## TODO: Logic to set env vars if deployed lambda needs them
-    # Environment = list(Variables = list(
-    #   REGION = Sys.getenv("REGION"),
-    #   PROFILE = Sys.getenv("PROFILE"),
-    #   SECRET_ACCESS_KEY = Sys.getenv("SECRET_ACCESS_KEY"),
-    #   ACCESS_KEY_ID = Sys.getenv("ACCESS_KEY_ID")
-    # ))
   )
 
   logger::log_debug("[create_lambda_function] Done.")
@@ -402,7 +419,6 @@ create_lambda_function <- function(tag, ecr_image_uri, lambda_role_arn, ...) {
 
 #' delete_lambda_function
 #' @noRd
-
 delete_lambda_function <- function(tag) {
   lambda_service <- aws_connect("lambda")
   lambda_service$delete_function(
