@@ -120,6 +120,10 @@ test_lambda <- function(tag, payload) {
 #' deploy a local lambda image to AWS Lambda
 #'
 #' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`)
+#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
+#' deployed Lambda environment (default = `FALSE`). This is useful if the Lambda needs to access
+#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
+#' `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
 #' @param ... Arguments passed onto `create_lambda_function`
 #'
 #' @examples
@@ -147,7 +151,7 @@ test_lambda <- function(tag, payload) {
 #' }
 #' @export
 deploy_lambda <-
-  function(tag, ...) {
+  function(tag, set_aws_envvars = FALSE, ...) {
     ## Inputs are validated by lower-level functions
 
     logger::log_info("[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while.")
@@ -198,6 +202,7 @@ deploy_lambda <-
           tag = tag,
           ecr_image_uri = ecr_image_uri,
           lambda_role_arn = iam_lambda_role$Role$Arn,
+          set_aws_envvars = set_aws_envvars,
           ...
         )
       },
