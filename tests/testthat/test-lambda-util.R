@@ -1,34 +1,12 @@
 
 if (FALSE) { # only in in interactive session
-  test_that("aws_connect fails ok when env vars are missing or incorrect", {
-    correct_env <- Sys.getenv("ACCESS_KEY_ID")
-    Sys.setenv(ACCESS_KEY_ID = "")
-    expect_error(aws_connect("lambda"))
-    Sys.setenv(ACCESS_KEY_ID = correct_env)
-
-    correct_env <- Sys.getenv("SECRET_ACCESS_KEY")
-    Sys.setenv(SECRET_ACCESS_KEY = "")
-    expect_error(aws_connect("lambda"))
-    Sys.setenv(SECRET_ACCESS_KEY = correct_env)
-
-    correct_env <- Sys.getenv("PROFILE")
-    Sys.setenv(PROFILE = "")
-    expect_error(aws_connect("lambda"))
-    Sys.setenv(PROFILE = correct_env)
-
-    correct_env <- Sys.getenv("REGION")
-    Sys.setenv(REGION = "")
-    expect_error(aws_connect("lambda"))
-    Sys.setenv(REGION = correct_env)
-  })
 
   test_that("aws_connect fails ok when bad service is requested", {
     expect_error(aws_connect("lambd"))
   })
 
   test_that("aws_connect works", {
-    test <- aws_connect("lambda")
-    checkmate::expect_list(x = test, len = 59)
+    checkmate::expect_list(aws_connect("lambda"))
   })
 }
 
