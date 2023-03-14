@@ -153,30 +153,16 @@ avoid adding `r2lambda` as a dependency to the Lambda function. (At the time of 
 `r2lambda` does not yet support non-CRAN packages.)
 
 ```{r}
-s3_connect <- function() {
-  paws::s3(config = list(
-    credentials = list(
-      creds = list(
-        access_key_id = Sys.getenv("ACCESS_KEY_ID"),
-        secret_access_key = Sys.getenv("SECRET_ACCESS_KEY")
-      ),
-      profile = Sys.getenv("PROFILE")
-    ),
-    region = Sys.getenv("REGION")
-  ))
-}
-
 tidytuesday_lambda_s3 <- function() {
   most_recent_tuesday <- tidytuesdayR::last_tuesday(date = Sys.Date())
   tt_data <- tidytuesdayR::tt_load(x = most_recent_tuesday)
   tt_data <- lapply(names(tt_data), function(x) tt_data[[x]])
   tt_data_raw <- serialize(tt_data, connection = NULL)
   
-  s3_service <- s3_connect()
+  s3_service <- paws::s3()
   s3_service$put_object(Body = tt_data_raw,
                         Bucket = "tidytuesday-datasets",
                         Key = most_recent_tuesday)
-  
 }
 ```
 
@@ -199,18 +185,20 @@ list_objects("tidytuesday-datasets")
 On to the next step, to create and deploy the Lambda function. We have a few 
 considerations here:
 
-1. For the Lambda function to connect to S3, it needs access to some environmental 
-variables. The same ones as we have in our current interactive session without which
-we can't establish local clients of AWS services. These are: `REGION`, `PROFILE`,
-`SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. To include these envvars in the Lambda
-docker image on deploy, use the `set_aws_envvars` argument of `deploy_lambda`.
-
-2. We have some dependencies that would need to be available in the docker image. 
+1. We have some dependencies that would need to be available in the docker image. 
 We already saw how to install `{tidytuesdayR}` in our Lambda docker image in a 
 [previous post](https://discindo.org/post/an-r-aws-lambda-function-to-download-tidytuesday-datasets/).
 Besides this, we also need to install `{paws}`, because without it we can't interact
 with S3. To do this, we just need to add `dependencies = c("tidytuesdayR", "paws")` 
 when building the image with `r2lambda::build_lambda`.
+
+2. 
+
+1. For the Lambda function to connect to S3, it needs access to some environmental 
+variables. The same ones as we have in our current interactive session without which
+we can't establish local clients of AWS services. These are: `REGION`, `PROFILE`,
+`SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. To include these envvars in the Lambda
+docker image on deploy, use the `set_aws_envvars` argument of `deploy_lambda`.
 
 ## Build
 
