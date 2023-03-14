@@ -31,33 +31,6 @@ check_system_dependencies <- function() {
 #'   }
 #' @export
 aws_connect <- function(service) {
-
-  logger::log_debug("[aws_connect] Checking env vars.")
-
-  checkmate::assert_character(
-    x = Sys.getenv("ACCESS_KEY_ID"),
-    min.chars = 1,
-    len = 1
-  )
-
-  checkmate::assert_character(
-    x = Sys.getenv("SECRET_ACCESS_KEY"),
-    min.chars = 1,
-    len = 1
-  )
-
-  checkmate::assert_character(
-    x = Sys.getenv("PROFILE"),
-    min.chars = 1,
-    len = 1
-  )
-
-  checkmate::assert_character(
-    x = Sys.getenv("REGION"),
-    min.chars = 1,
-    len = 1
-  )
-
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
@@ -69,16 +42,7 @@ aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Connecting to AWS.")
 
   .service <- utils::getFromNamespace(service, "paws")
-  .service(config = list(
-    credentials = list(
-      creds = list(
-        access_key_id = Sys.getenv("ACCESS_KEY_ID"),
-        secret_access_key = Sys.getenv("SECRET_ACCESS_KEY")
-      ),
-      profile = Sys.getenv("PROFILE")
-    ),
-    region = Sys.getenv("REGION")
-  ))
+  .service()
 }
 
 #' install_deps_line
