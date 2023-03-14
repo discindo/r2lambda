@@ -4,10 +4,15 @@
 \alias{deploy_lambda}
 \title{deploy a local lambda image to AWS Lambda}
 \usage{
-deploy_lambda(tag, ...)
+deploy_lambda(tag, set_aws_envvars = FALSE, ...)
 }
 \arguments{
 \item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`)}
+
+\item{set_aws_envvars}{logical, whether to set the local AWS secrets to the
+deployed Lambda environment (default = `FALSE`). This is useful if the Lambda needs to access
+other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
+`SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.}
 
 \item{...}{Arguments passed onto `create_lambda_function`}
 }
