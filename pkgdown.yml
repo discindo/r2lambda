@@ -1,0 +1,12 @@
+pandoc: 2.19.2
+pkgdown: 2.0.7
+pkgdown_sha: ~
+articles:
+  lambda-s3: lambda-s3.html
+  schedule-lambda: schedule-lambda.html
+  tt-lambda: tt-lambda.html
+last_built: 2023-04-14T05:24Z
+urls:
+  reference: https://discindo.github.io/r2lambda/reference
+  article: https://discindo.github.io/r2lambda/articles
+
