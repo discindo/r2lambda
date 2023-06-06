@@ -32,7 +32,7 @@ build_lambda <- function(tag, runtime_function, runtime_path, cran_dependencies,
       logger::log_error(msg)
       rlang::abort(e$message)
     }
-  )¨
+  )
   logger::log_warn("[build_lambda] Created Dockerfile and lambda runtime script in temporary folder.")
 
   logger::log_info("[build_lambda] Building Docker image.")
