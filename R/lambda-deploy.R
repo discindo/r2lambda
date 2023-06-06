@@ -3,10 +3,11 @@
 #' @param tag A name for the Docker container and Lambda function
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param dependencies list of dependencies
+#' @param cran_dependencies list of dependencies
+#' @param github_dependencies list of dependencies
 #'
 #' @export
-build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
+build_lambda <- function(tag, runtime_function, runtime_path, cran_dependencies, github_dependencies) {
 
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
@@ -31,7 +32,7 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
       logger::log_error(msg)
       rlang::abort(e$message)
     }
-  )
+  )¨
   logger::log_warn("[build_lambda] Created Dockerfile and lambda runtime script in temporary folder.")
 
   logger::log_info("[build_lambda] Building Docker image.")
