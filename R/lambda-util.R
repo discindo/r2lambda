@@ -47,13 +47,21 @@ aws_connect <- function(service) {
 
 #' install_deps_line
 #' @noRd
-install_deps_line <- function(deps) {
+install_deps_line <- function(cran_deps, github_deps) {
 
-  checkmate::assert_character(deps)
+  checkmate::assert_character(cran_deps)
+  checkmate::assert_character(github_deps)
 
-  repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
-  glued <- glue::glue_collapse(glue::single_quote(deps), sep = ", ")
-  glue::glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
+  if (!is.null(cran_deps)) {
+    repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
+    cran_glued <- glue::glue_collapse(glue::single_quote(cran_deps), sep = ", ")
+    glue::glue('RUN Rscript -e "install.packages(c({cran_glued}), repos = {repo})"')
+  }
+
+  if (!is.null(github_deps)) {
+    github_glued <- glue::glue_collapse(glue::single_quote(github_deps), sep = ", ")
+    glue::glue('RUN Rscript -e "remotes::install_github(c({github_glued}))"')
+  }
 }
 
 #' runtime_line
@@ -91,7 +99,8 @@ parse_password <- function(ecr_token) {
 #'     folder = folder,
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
-#'     dependencies = dependencies
+#'     cran_dependencies = cran_dependencies,
+#'     github_dependencies = github_dependencies
 #'     )
 #'   create_lambda_image(folder, tag = "test-tag")
 #'   dir.exists(folder)
@@ -103,7 +112,8 @@ create_lambda_dockerfile <-
   function(folder,
            runtime_function,
            runtime_path,
-           dependencies) {
+           cran_dependencies,
+           github_dependencies) {
 
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
@@ -162,8 +172,8 @@ create_lambda_dockerfile <-
 
     logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
 
-    if (!is.null(dependencies)) {
-      deps_string <- install_deps_line(deps = c(dependencies))
+    if (!is.null(cran_dependencies) || !is.null(github_dependencies)) {
+      deps_string <- install_deps_line(cran_deps = c(cran_dependencies), github_deps = c(github_dependencies))
       write(deps_string,
             file = file.path(folder, "Dockerfile"),
             append = TRUE)
