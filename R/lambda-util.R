@@ -86,7 +86,8 @@ parse_password <- function(ecr_token) {
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param dependencies list of dependencies
+#' @param cran_dependencies list of dependencies
+#' @param github_dependencies list of dependencies
 #'
 #' @examples
 #' \dontrun{
@@ -150,7 +151,13 @@ create_lambda_dockerfile <-
     }
 
     checkmate::assert_character(
-      x = dependencies,
+      x = cran_dependencies,
+      min.chars = 1,
+      null.ok = TRUE
+    )
+    
+    checkmate::assert_character(
+      x = github_dependencies,
       min.chars = 1,
       null.ok = TRUE
     )
