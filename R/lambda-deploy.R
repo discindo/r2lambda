@@ -22,7 +22,8 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
         folder = folder,
         runtime_function = runtime_function,
         runtime_path = runtime_path,
-        dependencies = dependencies
+        cran_dependencies = cran_dependencies,
+        github_dependencies = github_dependencies
       )
     },
     error = function(e) {
