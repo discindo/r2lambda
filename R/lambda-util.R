@@ -45,23 +45,38 @@ aws_connect <- function(service) {
   .service()
 }
 
-#' install_deps_line
+#' install_cran_deps_line
 #' @noRd
-install_deps_line <- function(cran_deps, github_deps) {
+install_cran_deps_line <- function(cran_deps) {
 
   checkmate::assert_character(cran_deps)
-  checkmate::assert_character(github_deps)
 
   if (!is.null(cran_deps)) {
+    logger::log_debug("[install_cran_deps_line] cran_deps exist.  Adding them to Dockerfile.")
     repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
     cran_glued <- glue::glue_collapse(glue::single_quote(cran_deps), sep = ", ")
     glue::glue('RUN Rscript -e "install.packages(c({cran_glued}), repos = {repo})"')
+  } else {
+    logger::log_debug("[install_cran_deps_line] cran_deps do not exist.  Skipping...")
   }
 
+}
+
+#' install_guithub_deps_line
+#' @noRd
+install_github_deps_line <- function(github_deps) {
+
+  checkmate::assert_character(github_deps)
+
   if (!is.null(github_deps)) {
+    logger::log_debug("[install_github_deps_line] github_deps exist.  Adding them to Dockerfile.")
     github_glued <- glue::glue_collapse(glue::single_quote(github_deps), sep = ", ")
     glue::glue('RUN Rscript -e "remotes::install_github(c({github_glued}))"')
+  } else {
+    logger::log_debug("[install_github_deps_line] github_deps do not exist.  Skipping...")
   }
+
+
 }
 
 #' runtime_line
@@ -155,7 +170,7 @@ create_lambda_dockerfile <-
       min.chars = 1,
       null.ok = TRUE
     )
-    
+
     checkmate::assert_character(
       x = github_dependencies,
       min.chars = 1,
@@ -179,11 +194,24 @@ create_lambda_dockerfile <-
 
     logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
 
-    if (!is.null(cran_dependencies) || !is.null(github_dependencies)) {
-      deps_string <- install_deps_line(cran_deps = c(cran_dependencies), github_deps = c(github_dependencies))
+    if (!is.null(cran_dependencies)) {
+      logger::log_debug("[create_lambda_dockerfile] cran_dependencies exist.  Adding them to Dockerfile.")  
+      deps_string <- install_cran_deps_line(cran_deps = c(cran_dependencies))
       write(deps_string,
             file = file.path(folder, "Dockerfile"),
             append = TRUE)
+    } else {
+      logger::log_debug("[create_lambda_dockerfile] cran_dependencies do not exist.  Skipping...")  
+    }
+
+     if (!is.null(github_dependencies)) {
+      logger::log_debug("[create_lambda_dockerfile] github_dependencies exist.  Adding them to Dockerfile.")  
+      deps_string <- install_github_deps_line(github_deps = c(github_dependencies))
+      write(deps_string,
+            file = file.path(folder, "Dockerfile"),
+            append = TRUE)
+    } else {
+      logger::log_debug("[create_lambda_dockerfile] github_dependencies do not exist.  Skipping...")  
     }
 
     runtime_string <- runtime_line(runtime_function)
