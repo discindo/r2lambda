@@ -45,38 +45,15 @@ aws_connect <- function(service) {
   .service()
 }
 
-#' install_cran_deps_line
+#' install_deps_line
 #' @noRd
-install_cran_deps_line <- function(cran_deps) {
+install_deps_line <- function(deps) {
 
-  checkmate::assert_character(cran_deps)
+  checkmate::assert_character(deps)
 
-  if (!is.null(cran_deps)) {
-    logger::log_debug("[install_cran_deps_line] cran_deps exist.  Adding them to Dockerfile.")
-    repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
-    cran_glued <- glue::glue_collapse(glue::single_quote(cran_deps), sep = ", ")
-    glue::glue('RUN Rscript -e "install.packages(c({cran_glued}), repos = {repo})"')
-  } else {
-    logger::log_debug("[install_cran_deps_line] cran_deps do not exist.  Skipping...")
-  }
-
-}
-
-#' install_guithub_deps_line
-#' @noRd
-install_github_deps_line <- function(github_deps) {
-
-  checkmate::assert_character(github_deps)
-
-  if (!is.null(github_deps)) {
-    logger::log_debug("[install_github_deps_line] github_deps exist.  Adding them to Dockerfile.")
-    github_glued <- glue::glue_collapse(glue::single_quote(github_deps), sep = ", ")
-    glue::glue('RUN Rscript -e "remotes::install_github(c({github_glued}))"')
-  } else {
-    logger::log_debug("[install_github_deps_line] github_deps do not exist.  Skipping...")
-  }
-
-
+  repo <- glue::single_quote('https://packagemanager.rstudio.com/all/__linux__/centos7/latest')
+  glued <- glue::glue_collapse(glue::single_quote(deps), sep = ", ")
+  glue::glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
 }
 
 #' runtime_line
@@ -101,8 +78,7 @@ parse_password <- function(ecr_token) {
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param cran_dependencies list of dependencies
-#' @param github_dependencies list of dependencies
+#' @param dependencies list of dependencies
 #'
 #' @examples
 #' \dontrun{
@@ -115,8 +91,7 @@ parse_password <- function(ecr_token) {
 #'     folder = folder,
 #'     runtime_function = runtime_function,
 #'     runtime_path = runtime_path,
-#'     cran_dependencies = cran_dependencies,
-#'     github_dependencies = github_dependencies
+#'     dependencies = dependencies
 #'     )
 #'   create_lambda_image(folder, tag = "test-tag")
 #'   dir.exists(folder)
@@ -128,8 +103,7 @@ create_lambda_dockerfile <-
   function(folder,
            runtime_function,
            runtime_path,
-           cran_dependencies,
-           github_dependencies) {
+           dependencies) {
 
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
@@ -166,13 +140,7 @@ create_lambda_dockerfile <-
     }
 
     checkmate::assert_character(
-      x = cran_dependencies,
-      min.chars = 1,
-      null.ok = TRUE
-    )
-
-    checkmate::assert_character(
-      x = github_dependencies,
+      x = dependencies,
       min.chars = 1,
       null.ok = TRUE
     )
@@ -194,24 +162,11 @@ create_lambda_dockerfile <-
 
     logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
 
-    if (!is.null(cran_dependencies)) {
-      logger::log_debug("[create_lambda_dockerfile] cran_dependencies exist.  Adding them to Dockerfile.")  
-      deps_string <- install_cran_deps_line(cran_deps = c(cran_dependencies))
+    if (!is.null(dependencies)) {
+      deps_string <- install_deps_line(deps = c(dependencies))
       write(deps_string,
             file = file.path(folder, "Dockerfile"),
             append = TRUE)
-    } else {
-      logger::log_debug("[create_lambda_dockerfile] cran_dependencies do not exist.  Skipping...")  
-    }
-
-     if (!is.null(github_dependencies)) {
-      logger::log_debug("[create_lambda_dockerfile] github_dependencies exist.  Adding them to Dockerfile.")  
-      deps_string <- install_github_deps_line(github_deps = c(github_dependencies))
-      write(deps_string,
-            file = file.path(folder, "Dockerfile"),
-            append = TRUE)
-    } else {
-      logger::log_debug("[create_lambda_dockerfile] github_dependencies do not exist.  Skipping...")  
     }
 
     runtime_string <- runtime_line(runtime_function)
