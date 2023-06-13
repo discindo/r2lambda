@@ -109,7 +109,7 @@ test_lambda <- function(tag, payload) {
 
   logger::log_info("[test_lambda] Stopping running lambda container.")
   running_containers <- docker_cli$container$list()
-  to_stop <- running_containers[running_containers$name == uid][["id"]]
+  to_stop <- running_containers$id[running_containers$name == uid]
   docker_cli$container$remove(id = to_stop, force = TRUE)
 
   logger::log_success("[test_lambda] Done.")
