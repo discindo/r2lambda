@@ -87,11 +87,12 @@
 <div class="section level2">
 <h2 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>
-<p><code>r2lambda</code> assumes environmental variables for connecting to AWS services are available in the <code>R</code> session. This is typically done via an <code>.Renviron</code> file that should include:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ACCESS_KEY_ID <span class="ot">=</span> <span class="st">"YOUR AWS ACCESS KEY ID"</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>SECRET_ACCESS_KEY <span class="ot">=</span> <span class="st">"YOUR AWS SECRET ACCESS KEY"</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>PROFILE <span class="ot">=</span> <span class="st">"YOUR AWS PROFILE"</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>REGION <span class="ot">=</span> <span class="st">"YOUR AWS REGION"</span></span></code></pre></div>
+<p><code>r2lambda</code> assumes credentials for connecting to AWS services are available in the <code>R</code> session. This can be done via an <code>.Renviron</code> file that should set enironmental variables like so:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>AWS_ACCESS_KEY_ID <span class="ot">=</span> <span class="st">"YOUR AWS ACCESS KEY ID"</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>AWS_SECRET_ACCESS_KEY <span class="ot">=</span> <span class="st">"YOUR AWS SECRET ACCESS KEY"</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>AWS_PROFILE <span class="ot">=</span> <span class="st">"YOUR AWS PROFILE"</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>AWS_REGION <span class="ot">=</span> <span class="st">"YOUR AWS REGION"</span></span></code></pre></div>
+<p>But since <code>r2lambda</code> uses <code>paws</code> under the hood, all authentication methods supported by <code>paws</code> are available in <code>r2lambda</code>. See <a href="https://github.com/paws-r/paws/blob/main/docs/credentials.md" class="external-link">here</a> for details on setting credentials, region, profile, etc.</p>
 </div>
 <div class="section level2">
 <h2 id="workflow">Workflow<a class="anchor" aria-label="anchor" href="#workflow"></a>
@@ -106,11 +107,11 @@
 <span></span>
 <span><span class="co"># Might take a while, its building a docker image</span></span>
 <span><span class="fu"><a href="reference/build_lambda.html">build_lambda</a></span><span class="op">(</span></span>
-<span> tag <span class="op">=</span> <span class="st">"parity1"</span>,</span>
-<span> runtime_function <span class="op">=</span> <span class="va">runtime_function</span>,</span>
-<span> runtime_path <span class="op">=</span> <span class="va">runtime_path</span>,</span>
-<span> dependencies <span class="op">=</span> <span class="va">dependencies</span></span>
-<span> <span class="op">)</span></span></code></pre></div>
+<span>  tag <span class="op">=</span> <span class="st">"parity1"</span>,</span>
+<span>  runtime_function <span class="op">=</span> <span class="va">runtime_function</span>,</span>
+<span>  runtime_path <span class="op">=</span> <span class="va">runtime_path</span>,</span>
+<span>  dependencies <span class="op">=</span> <span class="va">dependencies</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="test-the-lambda-docker-image-locally">Test the lambda docker image locally<a class="anchor" aria-label="anchor" href="#test-the-lambda-docker-image-locally"></a>
@@ -138,7 +139,7 @@
 <span>  include_logs <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co">#&gt; Lambda response payload: </span></span>
+<span><span class="co">#&gt; Lambda response payload:</span></span>
 <span><span class="co">#&gt; {"parity":"even"}</span></span></code></pre></div>
 </div>
 </div>
