@@ -15,8 +15,8 @@ to a deployed `AWS Lambda` function.
 
 ## Requirements
 
-- [docker](https://docs.docker.com/get-docker/) is required to build,
-  tag, and push the image.
+  - [docker](https://docs.docker.com/get-docker/) is required to build,
+    tag, and push the image.
 
 ## Installation
 
@@ -29,14 +29,19 @@ remotes::install_github("discindo/r2lambda")
 
 ## Setup
 
-`r2lambda` assumes environmental variables for connecting to AWS
-services are available in the `R` session. This is typically done via an
-`.Renviron` file that should include:
+`r2lambda` assumes credentials for connecting to AWS services are
+available in the `R` session. This can be done via an `.Renviron` file
+that should set enironmental variables like so:
 
-    ACCESS_KEY_ID = "YOUR AWS ACCESS KEY ID"
-    SECRET_ACCESS_KEY = "YOUR AWS SECRET ACCESS KEY"
-    PROFILE = "YOUR AWS PROFILE"
-    REGION = "YOUR AWS REGION"
+    AWS_ACCESS_KEY_ID = "YOUR AWS ACCESS KEY ID"
+    AWS_SECRET_ACCESS_KEY = "YOUR AWS SECRET ACCESS KEY"
+    AWS_PROFILE = "YOUR AWS PROFILE"
+    AWS_REGION = "YOUR AWS REGION"
+
+But since `r2lambda` uses `paws` under the hood, all authentication
+methods supported by `paws` are available in `r2lambda`. See
+[here](https://github.com/paws-r/paws/blob/main/docs/credentials.md) for
+details on setting credentials, region, profile, etc.
 
 ## Workflow
 
@@ -49,11 +54,11 @@ dependencies <- NULL
 
 # Might take a while, its building a docker image
 build_lambda(
- tag = "parity1",
- runtime_function = runtime_function,
- runtime_path = runtime_path,
- dependencies = dependencies
- )
+  tag = "parity1",
+  runtime_function = runtime_function,
+  runtime_path = runtime_path,
+  dependencies = dependencies
+)
 ```
 
 ### Test the lambda docker image locally
@@ -81,7 +86,7 @@ invoke_lambda(
   include_logs = FALSE
 )
 
-#> Lambda response payload: 
+#> Lambda response payload:
 #> {"parity":"even"}
 ```
 
