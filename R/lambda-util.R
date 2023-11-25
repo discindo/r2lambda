@@ -74,6 +74,8 @@ parse_password <- function(ecr_token) {
 
 #' create_lambda_dockerfile
 #'
+#' Changes will be proposed here
+#'
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
