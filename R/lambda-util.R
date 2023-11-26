@@ -74,10 +74,14 @@ parse_password <- function(ecr_token) {
 
 #' create_lambda_dockerfile
 #'
+#' Changes will be proposed here
+#'
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
 #' @param dependencies list of dependencies
+#' @param renv_path path containing `renv.lock` and `renv` folder to use for dependencies.
+#' @param additional_R_script_path path to an R folder containing additional scripts to bundle in the docker image.
 #'
 #' @examples
 #' \dontrun{
@@ -102,7 +106,9 @@ create_lambda_dockerfile <-
   function(folder,
            runtime_function,
            runtime_path,
-           dependencies) {
+           dependencies,
+           renv_path = NULL,
+           additional_R_script_path = NULL) {
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
     checkmate::assert_character(
@@ -143,6 +149,52 @@ create_lambda_dockerfile <-
       null.ok = TRUE
     )
 
+    if (!is.null(renv_path)){
+      checkmate::assert_character(
+        x = renv_path,
+        min.chars = 1,
+        null.ok = TRUE
+      )
+
+      if (!checkmate::test_file_exists(file.path(renv_path, ".Rprofile"))) {
+        msg <- glue::glue("[create_lambda_dockerfile] Can't access .Rprofile file in {renv_path}.")
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+
+      if (!checkmate::test_file_exists(file.path(renv_path, "renv.lock"))) {
+        msg <- glue::glue("[create_lambda_dockerfile] Can't access renv.lock file in {renv_path}.")
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+
+      if (!checkmate::test_file_exists(file.path(renv_path, "renv", "activate.R"))) {
+        msg <- glue::glue("[create_lambda_dockerfile] Can't access renv/activate.R file inside {renv_path}.")
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+
+      if (!checkmate::test_file_exists(file.path(renv_path, "renv", "settings.json"))) {
+        msg <- glue::glue("[create_lambda_dockerfile] Can't access renv/settings.json file inside {renv_path}.")
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+    }
+
+    if (!is.null(additional_R_script_path)) {
+      checkmate::assert_character(
+        x = additional_R_script_path,
+        min.chars = 1,
+        null.ok = TRUE
+      )
+
+      if (!checkmate::test_directory_exists(additional_R_script_path)) {
+        msg <- glue::glue("[create_lambda_dockerfile] Can't access additional R script folder {additional_R_script_path}.")
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+    }
+
     logger::log_debug("[create_lambda_dockerfile] Creating directory with Dockerfile and runtime script.")
 
     docker_template <- system.file("lambdr_dockerfile.txt", package = "r2lambda")
@@ -170,6 +222,53 @@ create_lambda_dockerfile <-
         file = file.path(folder, "Dockerfile"),
         append = TRUE
       )
+    }
+
+    if (!is.null(renv_path)){
+      renv_lock_path <- file.path(renv_path, "renv.lock")
+      file.copy(renv_lock_path, folder)
+
+      renv_profile_path <- file.path(renv_path, ".Rprofile")
+      file.copy(renv_profile_path, folder)
+
+      dir.create(file.path(folder, "renv"))
+      dir.exists(file.path(folder, "renv"))
+
+      renv_activate_path <- file.path(renv_path, "renv", "activate.R")
+      file.copy(renv_activate_path, file.path(folder, "renv"))
+
+      renv_settings_path <- file.path(renv_path, "renv", "settings.json")
+      file.copy(renv_settings_path, file.path(folder, "renv"))
+
+      renv_string <- '
+COPY .Rprofile /lambda
+COPY renv.lock /lambda
+
+RUN mkdir /lambda/renv
+COPY settings.json /lambda/renv
+COPY activate.R /lambda/renv
+
+RUN chmod 755 -R /lambda
+
+RUN Rscript -e "renv::restore()"
+'
+      write(renv_string,
+            file = file.path(folder, "Dockerfile"),
+            append = TRUE
+      )
+    }
+
+    if (!is.null(additional_R_script_path)) {
+      additional_R_scripts <- dir(additional_R_script_path, pattern="*\\.R", full.names = TRUE, recursive = FALSE, include.dirs = FALSE)
+
+      dir.create(file.path(folder, "R"))
+      for (path in additional_R_scripts){
+        file.copy(path, file.path(folder, "R"))
+      }
+
+      additional_r_script_names <- basename(additional_R_scripts)
+      additional_R_scripts_string <-
+        glue::glue("COPY R/{additional_r_script_names} /lambda/R/{additional_r_script_names}", .sep = "\n")
     }
 
     runtime_string <- runtime_line(runtime_function)

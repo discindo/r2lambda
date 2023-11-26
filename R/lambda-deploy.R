@@ -4,9 +4,11 @@
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
 #' @param dependencies list of dependencies
+#' @param renv_path path containing `renv.lock` and `renv` folder to use for dependencies.
+#' @param additional_script_paths path to additional scripts to bundle in the image
 #'
 #' @export
-build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
+build_lambda <- function(tag, runtime_function, runtime_path, dependencies, renv_path = NULL, additional_script_paths = NULL) {
 
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
@@ -22,7 +24,9 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
         folder = folder,
         runtime_function = runtime_function,
         runtime_path = runtime_path,
-        dependencies = dependencies
+        dependencies = dependencies,
+        renv_path = renv_path,
+        additional_script_paths = additional_script_paths
       )
     },
     error = function(e) {
