@@ -51,14 +51,16 @@
 
 
 <dl><dt id="arg-tag">tag<a class="anchor" aria-label="anchor" href="#arg-tag"></a></dt>
-<dd><p>The tag of an existing local image tagged with ECR repo (see `build_lambda`)</p></dd>
+<dd><p>The tag of an existing local image tagged with ECR repo
+(see `build_lambda`)</p></dd>
 
 
 <dt id="arg-set-aws-envvars">set_aws_envvars<a class="anchor" aria-label="anchor" href="#arg-set-aws-envvars"></a></dt>
 <dd><p>logical, whether to set the local AWS secrets to the
-deployed Lambda environment (default = `FALSE`). This is useful if the Lambda needs to access
-other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
-`SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.</p></dd>
+deployed Lambda environment (default = `FALSE`). This is useful if the
+Lambda needs to access other AWS service. When `TRUE`, the following
+envvars are set: `PROFILE`, `REGION`, `SECRET_ACCESS_KEY`, and
+`ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
