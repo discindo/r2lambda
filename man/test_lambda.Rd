@@ -7,7 +7,8 @@
 test_lambda(tag, payload)
 }
 \arguments{
-\item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`) # nolint}
+\item{tag}{The tag of an existing local image tagged with ECR repo 
+(see `build_lambda`)}
 
 \item{payload}{Named list. Arguments to lambda function.}
 }

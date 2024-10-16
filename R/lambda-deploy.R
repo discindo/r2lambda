@@ -31,7 +31,9 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
       rlang::abort(e$message)
     }
   )
-  logger::log_warn("[build_lambda] Created Dockerfile and lambda runtime script in temporary folder.") # nolint
+  logger::log_warn(
+    "[build_lambda] Created Dockerfile and lambda runtime script in temporary folder." # nolint
+  )
 
   logger::log_info("[build_lambda] Building Docker image.")
   tryCatch(
@@ -44,16 +46,23 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
       rlang::abort(e$message)
     }
   )
-  logger::log_warn("[build_lambda] Docker image built. This can take up substantial amount of disk space.") # nolint
-  logger::log_warn("[build_lambda] Use `docker image ls` in your shell to see the image size.") # nolint
-  logger::log_warn("[build_lambda] Use `docker rmi <image>` in your shell to remove an image.") # nolint
+  logger::log_warn(
+    "[build_lambda] Docker image built. This can take up substantial amount of disk space." # nolint
+  )
+  logger::log_warn(
+    "[build_lambda] Use `docker image ls` in your shell to see the image size."
+  )
+  logger::log_warn(
+    "[build_lambda] Use `docker rmi <image>` in your shell to remove an image."
+  )
 
   logger::log_success("[build_lambda] Done.")
 }
 
 #' test a lambda locally
 #'
-#' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`) # nolint
+#' @param tag The tag of an existing local image tagged with ECR repo 
+#' (see `build_lambda`)
 #' @param payload Named list. Arguments to lambda function.
 #'
 #' @examples
@@ -74,7 +83,7 @@ test_lambda <- function(tag, payload) {
 
   logger::log_info("[test_lambda] Fetching remote tag.")
   repo_uri <- fetch_ecr_repo(tag)
-  repo_tag <- paste0(repo_uri, ':latest')
+  repo_tag <- paste0(repo_uri, ":latest")
 
   logger::log_info("[test_lambda] Checking image tag exists.")
   images <- docker_cli$image$list()
@@ -89,7 +98,7 @@ test_lambda <- function(tag, payload) {
   }
 
   uid <- uuid::UUIDgenerate(1)
-  logger::log_info(glue("[test_lambda] Starting lambda container with name {uid}.")) # nolint
+  logger::log_info("[test_lambda] Starting lambda container with name {uid}.")
   docker_cli$container$run(
     image = repo_tag,
     port = "9000:8080",
@@ -98,7 +107,12 @@ test_lambda <- function(tag, payload) {
   )
 
   logger::log_info("[test_lambda] Invoking local lambda instance.")
-  arg <- c("-XPOST", "http://localhost:9000/2015-03-31/functions/function/invocations", "-d", payload) # nolint
+  arg <- c(
+    "-XPOST",
+    "http://localhost:9000/2015-03-31/functions/function/invocations",
+    "-d",
+    payload
+  )
   response <- sys::exec_internal(cmd = "curl", args = arg)
   message("Response standard output:\n")
   response$stdout |> rawToChar() |> cat()
@@ -119,11 +133,13 @@ test_lambda <- function(tag, payload) {
 
 #' deploy a local lambda image to AWS Lambda
 #'
-#' @param tag The tag of an existing local image tagged with ECR repo (see `build_lambda`) # nolint
-#' @param set_aws_envvars logical, whether to set the local AWS secrets to the 
-#' deployed Lambda environment (default = `FALSE`). This is useful if the Lambda needs to access # nolint
-#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`, # nolint
-#' `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`. # nolint
+#' @param tag The tag of an existing local image tagged with ECR repo
+#' (see `build_lambda`)
+#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
+#' deployed Lambda environment (default = `FALSE`). This is useful if the
+#' Lambda needs to access other AWS service. When `TRUE`, the following
+#' envvars are set: `PROFILE`, `REGION`, `SECRET_ACCESS_KEY`, and
+#' `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
 #' @param ... Arguments passed onto `create_lambda_function`
 #'
 #' @examples
@@ -155,7 +171,9 @@ deploy_lambda <-
   function(tag, set_aws_envvars = FALSE, ...) {
     ## Inputs are validated by lower-level functions
 
-    logger::log_info("[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while.") # nolint
+    logger::log_info(
+      "[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while."
+    ) 
     ecr_image_uri <- tryCatch(
       expr = {
         push_lambda_image(tag = tag)
@@ -186,12 +204,14 @@ deploy_lambda <-
       }
     )
 
-    logger::log_warn("[deploy_lambda] Created AWS role with basic lambda execution permissions.") # nolint
+    logger::log_warn(
+      "[deploy_lambda] Created AWS role with basic lambda execution permissions." # nolint
+    ) 
     logger::log_warn(
       "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint
     )
 
-    ## TODO check if the role is OK before starting to create the lambda function
+    ## TODO check if the role is OK before starting to create the lambda 
     ## As is, we are waiting ten seconds before creating the lambda
     ## but this could be too long in some cases or not long enough in other
     Sys.sleep(10)
@@ -221,18 +241,14 @@ deploy_lambda <-
     )
 
     logger::log_warn("[deploy_lambda] Lambda function created successfully.")
-    logger::log_warn(glue(
-      "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
-    ))
     logger::log_warn(
-      glue(
-        "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`" # nolint
-      )
+      "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
     )
     logger::log_warn(
-      glue(
+        "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`" # nolint
+    )
+    logger::log_warn(
         "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`" # nolint
-      )
     )
 
     logger::log_success("[deploy_lambda] Done.")
@@ -248,7 +264,7 @@ deploy_lambda <-
 
 #' invoke a lambda function
 #' @param function_name The name or arn of the function
-#' @param invocation_type One of ‘DryRun’, ‘RequestResponse’, 
+#' @param invocation_type One of ‘DryRun’, ‘RequestResponse’,
 #' or ‘Event’ see `?paws.compute::lambda_invoke`
 #' @param payload A named list internally converted to json
 #' @param include_logs logical, whether to show the lambda logs (default: FALSE)
@@ -273,7 +289,7 @@ invoke_lambda <-
     lambda_service <- aws_connect("lambda")
 
     logger::log_info("[invoke_lambda] Checking function state.")
-    state <- lambda_service$get_function(FunctionName = function_name)$Configuration$State
+    state <- lambda_service$get_function(FunctionName = function_name)$Configuration$State # nolint
     ## TODO: Should we also check `LastUpdateStatus` 
     ## (https://docs.aws.amazon.com/lambda/latest/dg/functions-states.html)
 
@@ -291,8 +307,12 @@ invoke_lambda <-
       ), error = function(e) e$message)
 
     } else {
-      logger::log_info(glue("[invoke_lambda] Failed to invoke the function due to {state} state.")) # nolint
-      logger::log_info("[invoke_lambda] Please try again shortly if the reported state was `Pending`.") # nolint
+      logger::log_info(
+        "[invoke_lambda] Failed to invoke the function due to {state} state."
+      )
+      logger::log_info(
+        "[invoke_lambda] Please try again if the reported state was `Pending`."
+      )
     }
 
     message("\nLambda response payload: ")
@@ -312,8 +332,8 @@ invoke_lambda <-
 #' @param lambda_function character, the name (or tag) of the function. A check
 #' is done internally make sure the Lambda exists and fetch its ARN.
 #' @param execution_rate character, the rate to run the lambda function. Can use
-#' `rate` or `cron` specification. For details consult the official documentation: # nolint
-#' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html # nolint
+#' `rate` or `cron` specification. For details see the official documentation:
+#' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html 
 #'
 #' @examples
 #' \dontrun{
@@ -333,7 +353,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   if (!lambda_function %in% lambda_names) {
     msg <- glue(
       "[schedule_lambda] Cannot find deployed lambda function {lambda_function}"
-    ) 
+    )
     logger::log_error(msg)
     rlang::abort(msg)
   }
@@ -382,7 +402,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
 
   logger::log_info(
     "[schedule_lambda] Adding lambda function {lambda_function} to eventbridge schedule." # nolint
-  ) 
+  )
   tryCatch(
     expr = {
       add_lambda_to_eventridge(

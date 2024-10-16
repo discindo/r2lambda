@@ -13,18 +13,21 @@ is_docker_installed <- function() {
 #' check_system_deps
 #' @noRd
 check_system_dependencies <- function() {
-  # logger::log_debug("[check_system_dependencies] Checking if `aws cli` is installed.")
+  # logger::log_debug(
+  # "[check_system_dependencies] Checking if `aws cli` is installed.")
   # is_aws_cli_installed()
 
-  logger::log_debug("[check_system_dependencies] Checking if `docker` is installed.")
+  logger::log_debug(
+    "[check_system_dependencies] Checking if `docker` is installed."
+  )
   is_docker_installed()
 
   logger::log_debug("[check_system_dependencies] Done.")
 }
 
 #' connect to an aws service
-#' @param service character, the name of a service, e.g., "lambda" or "iam". Should
-#' be a function exported by `paws` (see `getNamespaceExports("paws")`)
+#' @param service character, the name of a service, e.g., "lambda" or "iam".
+#' Should be a function exported by `paws` (see `getNamespaceExports("paws")`)
 #' @examples
 #' \dontrun{
 #' aws_connect("lambda")
@@ -35,7 +38,9 @@ aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
-    msg <- glue("The service `{service}` does not appear to be available in `paws`.")
+    msg <- glue(
+      "The service `{service}` does not appear to be available in `paws`."
+    )
     logger::log_error(msg)
     rlang::abort(msg)
   }
@@ -51,7 +56,9 @@ aws_connect <- function(service) {
 install_deps_line <- function(deps) {
   checkmate::assert_character(deps)
 
-  repo <- single_quote("https://packagemanager.rstudio.com/all/__linux__/centos7/latest")
+  repo <- single_quote(
+    "https://packagemanager.rstudio.com/all/__linux__/centos7/latest"
+  )
   glued <- glue_collapse(single_quote(deps), sep = ", ")
   glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
 }
@@ -113,7 +120,9 @@ create_lambda_dockerfile <-
     )
 
     if (checkmate::test_directory_exists(folder)) {
-      msg <- glue("[create_lambda_dockerfile] Directory {folder} exists. Please choose another name.")
+      msg <- glue(
+        "[create_lambda_dockerfile] Directory {folder} exists. Please choose another name." # nolint
+      )
       logger::log_error(msg)
       rlang::abort(msg)
     }
@@ -133,7 +142,9 @@ create_lambda_dockerfile <-
     )
 
     if (!checkmate::test_file_exists(runtime_path)) {
-      msg <- glue("[create_lambda_dockerfile] Can't access runtime script file {runtime_path}.")
+      msg <- glue(
+        "[create_lambda_dockerfile] Can't access runtime script {runtime_path}."
+      )
       logger::log_error(msg)
       rlang::abort(msg)
     }
@@ -144,9 +155,14 @@ create_lambda_dockerfile <-
       null.ok = TRUE
     )
 
-    logger::log_debug("[create_lambda_dockerfile] Creating directory with Dockerfile and runtime script.")
+    logger::log_debug(
+      "[create_lambda_dockerfile] Creating directory with Dockerfile and runtime script." # nolint
+    )
 
-    docker_template <- system.file("lambdr_dockerfile.txt", package = "r2lambda")
+    docker_template <- system.file(
+      "lambdr_dockerfile.txt",
+      package = "r2lambda"
+    )
 
     dir.create(folder)
     dir.exists(folder)
@@ -163,7 +179,9 @@ create_lambda_dockerfile <-
       to = file.path(folder, "Dockerfile")
     )
 
-    logger::log_debug("[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info.")
+    logger::log_debug(
+      "[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info." # nolint
+    )
 
     if (!is.null(dependencies)) {
       deps_string <- install_deps_line(deps = c(dependencies))
@@ -199,7 +217,9 @@ fetch_ecr_repo <- function(tag) {
     needed_repo <- repos_names == tag
     repo_uri <- repos[needed_repo][[1]]$repositoryUri
   } else {
-    logger::log_debug("[fetch_ecr_repo] Creating new repository and fetching URI.")
+    logger::log_debug(
+      "[fetch_ecr_repo] Creating new repository and fetching URI."
+    )
     repo_meta <- ecr_service$create_repository(
       repositoryName = tag,
       imageScanningConfiguration = list(scanOnPush = TRUE)
@@ -212,7 +232,8 @@ fetch_ecr_repo <- function(tag) {
 
 #' create_lambda_container
 #'
-#' @param folder path to the folder containing the lambda runtime script and Dockerfile
+#' @param folder path to the folder containing the lambda runtime 
+#' script and Dockerfile
 #' @param tag a tag for the image
 #' @noRd
 create_lambda_image <- function(folder, tag) {
@@ -224,7 +245,9 @@ create_lambda_image <- function(folder, tag) {
   checkmate::assert_file_exists(file.path(folder, "Dockerfile"))
   checkmate::assert_file_exists(file.path(folder, "runtime.R"))
 
-  logger::log_debug("[create_lambda_image] Confirming that files are not empty.")
+  logger::log_debug(
+    "[create_lambda_image] Confirming that files are not empty."
+  )
   checkmate::assert_numeric(
     x = file.size(file.path(folder, "Dockerfile")),
     lower = 1,
@@ -266,7 +289,9 @@ push_lambda_image <- function(tag) {
 
   ecr_service <- aws_connect("ecr")
   ecr_token <- ecr_service$get_authorization_token()
-  ecr_password <- parse_password(ecr_token$authorizationData[[1]]$authorizationToken)
+  ecr_password <- parse_password(
+    ecr_token$authorizationData[[1]]$authorizationToken
+  )
   repo_uri <- fetch_ecr_repo(tag)
   server_address <- gsub(pattern = "/.*$", replacement = "", x = repo_uri)
 
@@ -285,7 +310,9 @@ push_lambda_image <- function(tag) {
     },
     error = function(e) {
       Sys.sleep(2)
-      logger::log_debug("[push_lambda_image] Pushing Docker image to AWS ECR. Second try.")
+      logger::log_debug(
+        "[push_lambda_image] Pushing Docker image to AWS ECR. Second try."
+      )
       docker_cli$image$push(name = repo_uri)
     }
   )
@@ -313,10 +340,12 @@ create_lambda_exec_role <- function(tag) {
     AssumeRolePolicyDocument = role_string
   )
 
-  logger::log_debug("[create_lambda_exec_role] Attaching basic execution role policy.")
+  logger::log_debug(
+    "[create_lambda_exec_role] Attaching basic execution role policy."
+  )
   iam_service$attach_role_policy(
     RoleName = role_name,
-    PolicyArn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    PolicyArn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # nolint
   )
 
   logger::log_debug("[create_lambda_exec_role] Done.")
@@ -340,12 +369,13 @@ delete_lambda_exec_role <- function(tag) {
 #' @param lambda_role_arn the arn of the execution role created for this lambda
 #' @param set_aws_envvars logical, whether to set the local AWS secrets to the
 #' deployed Lambda environment. This is useful if the Lambda needs to access
-#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`, `REGION`,
-#' `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
+#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`,
+#' `REGION`, `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using
+#' `Sys.getenv()`.
 #'
 #' @param ... arguments passed onto `paws.compute:::lambda_create_function()`.
-#' For example `Timeout` to increase the execution time, and `MemorySize` to request
-#' more memory
+#' For example `Timeout` to increase the execution time, and `MemorySize`
+#' to request more memory.
 #'
 #' @noRd
 create_lambda_function <-
@@ -397,12 +427,16 @@ delete_lambda_function <- function(tag) {
 
 #' Create a rule for event schedule
 #'
-#' @param rule_name character, the name of the rule (used later when adding targets to the event)
-#' @param rate character, the rate at which we want the function to run, e.g., `5 minutes`, `1 minute`
+#' @param rule_name character, the name of the rule (used later when adding 
+#' targets to the event)
+#' @param rate character, the rate at which we want the function to run, 
+#' e.g., `5 minutes`, `1 minute`
 #'
 #' @noRd
 create_event_rule_for_schedule <- function(rule_name, rate) {
-  logger::log_debug("[create_event_rule_for_schedule] Creating rule for event schedule.")
+  logger::log_debug(
+    "[create_event_rule_for_schedule] Creating rule for event schedule."
+  )
 
   aws_event <- aws_connect("eventbridge")
 
@@ -425,7 +459,7 @@ create_event_rule_for_schedule <- function(rule_name, rate) {
 
 #' Add permission for event to invoke lambda
 #'
-#' @param function_name character, the name of the lambda function we wish to schedule
+#' @param function_name character, the name of the lambda function to schedule
 #' @param scheduled_event_name character, a name for our event
 #' @param scheduled_rule_arn character, the ARN of the scheduled event role (as
 #' returned from `create_event_rule_for_schedule`)
@@ -435,7 +469,7 @@ lambda_add_permission_for_schedule <-
   function(function_name,
            scheduled_event_name,
            scheduled_rule_arn) {
-    logger::log_debug("[lambda_add_permission_for_schedule] Adding permission for event schedule.")
+    logger::log_debug("[lambda_add_permission_for_schedule] Adding permission for event schedule.") # nolint
     aws_lambda <- aws_connect("lambda")
     aws_lambda$add_permission(
       FunctionName = function_name,
@@ -455,8 +489,13 @@ lambda_add_permission_for_schedule <-
 #' @noRd
 add_lambda_to_eventridge <-
   function(rule_name, lambda_function_arn) {
-    logger::log_debug("[add_lambda_to_eventridge] Adding lambda function to events.")
+    logger::log_debug(
+      "[add_lambda_to_eventridge] Adding lambda function to events."
+    )
     aws_event <- aws_connect("eventbridge")
-    aws_event$put_targets(Rule = rule_name, Targets = list(list(Id = 1, Arn = lambda_function_arn)))
+    aws_event$put_targets(
+      Rule = rule_name, 
+      Targets = list(list(Id = 1, Arn = lambda_function_arn))
+    )
     logger::log_debug("[add_lambda_to_eventridge] Done.")
   }
