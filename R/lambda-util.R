@@ -24,7 +24,7 @@ check_system_dependencies <- function() {
 
 #' connect to an aws service
 #' @param service character, the name of a service, e.g., "lambda" or "iam". Should
-#' be a function exported by `{paws}` (see `getNamespaceExports("paws")`)
+#' be a function exported by `paws` (see `getNamespaceExports("paws")`)
 #' @examples
 #' \dontrun{
 #' aws_connect("lambda")
@@ -66,10 +66,10 @@ runtime_line <- function(runtime) {
 #' parse password from ecr token
 #' @noRd
 parse_password <- function(ecr_token) {
-  ecr_token %>%
-    jsonlite::base64_dec() %>%
-    rawToChar() %>%
-    gsub(pattern = "^AWS:", replacement = "", x = .)
+  ecr_token |>
+    jsonlite::base64_dec() |>
+    rawToChar() |>
+    gsub(pattern = "^AWS:", replacement = "")
 }
 
 #' create_lambda_dockerfile
@@ -267,7 +267,7 @@ push_lambda_image <- function(tag) {
   ecr_token <- ecr_service$get_authorization_token()
   ecr_password <- parse_password(ecr_token$authorizationData[[1]]$authorizationToken)
   repo_uri <- fetch_ecr_repo(tag)
-  server_address <- repo_uri %>% gsub(pattern = "/.*$", replacement = "", x = .)
+  server_address <- gsub(pattern = "/.*$", replacement = "", x = repo_uri)
 
   docker_cli <- stevedore::docker_client()
   docker_cli$login(

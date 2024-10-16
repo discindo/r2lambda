@@ -8,7 +8,7 @@ aws_connect(service)
 }
 \arguments{
 \item{service}{character, the name of a service, e.g., "lambda" or "iam". Should
-be a function exported by `{paws}` (see `getNamespaceExports("paws")`)}
+be a function exported by `paws` (see `getNamespaceExports("paws")`)}
 }
 \description{
 connect to an aws service
