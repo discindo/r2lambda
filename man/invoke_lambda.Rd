@@ -9,7 +9,8 @@ invoke_lambda(function_name, invocation_type, payload, include_logs = FALSE)
 \arguments{
 \item{function_name}{The name or arn of the function}
 
-\item{invocation_type}{One of ‘DryRun’, ‘RequestResponse’, or ‘Event’ see `?paws.compute::lambda_invoke`}
+\item{invocation_type}{One of ‘DryRun’, ‘RequestResponse’, 
+or ‘Event’ see `?paws.compute::lambda_invoke`}
 
 \item{payload}{A named list internally converted to json}
 
