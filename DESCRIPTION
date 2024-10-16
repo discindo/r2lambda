@@ -26,8 +26,8 @@ Imports:
     stevedore,
     sys,
     uuid
-Remotes: teofiln/stevedore
-RoxygenNote: 7.2.3
+Remotes: richfitz/stevedore
+RoxygenNote: 7.3.2
 Suggests: 
     covr,
     knitr,

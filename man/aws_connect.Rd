@@ -15,6 +15,6 @@ connect to an aws service
 }
 \examples{
 \dontrun{
-  aws_connect("lambda")
-  }
+aws_connect("lambda")
+}
 }
