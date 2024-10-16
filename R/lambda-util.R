@@ -29,12 +29,13 @@ check_system_dependencies <- function() {
 #' \dontrun{
 #' aws_connect("lambda")
 #' }
+#' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
 aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
-    msg <- glue::glue("The service `{service}` does not appear to be available in `paws`.")
+    msg <- glue("The service `{service}` does not appear to be available in `paws`.")
     logger::log_error(msg)
     rlang::abort(msg)
   }
@@ -50,17 +51,17 @@ aws_connect <- function(service) {
 install_deps_line <- function(deps) {
   checkmate::assert_character(deps)
 
-  repo <- glue::single_quote("https://packagemanager.rstudio.com/all/__linux__/centos7/latest")
-  glued <- glue::glue_collapse(glue::single_quote(deps), sep = ", ")
-  glue::glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
+  repo <- single_quote("https://packagemanager.rstudio.com/all/__linux__/centos7/latest")
+  glued <- glue_collapse(single_quote(deps), sep = ", ")
+  glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
 }
 
 #' runtime_line
 #' @noRd
 runtime_line <- function(runtime) {
   checkmate::assert_character(runtime)
-  rt <- glue::double_quote(runtime)
-  glue::glue("CMD [{rt}]")
+  rt <- double_quote(runtime)
+  glue("CMD [{rt}]")
 }
 
 #' parse password from ecr token
@@ -112,7 +113,7 @@ create_lambda_dockerfile <-
     )
 
     if (checkmate::test_directory_exists(folder)) {
-      msg <- glue::glue("[create_lambda_dockerfile] Directory {folder} exists. Please choose another name.")
+      msg <- glue("[create_lambda_dockerfile] Directory {folder} exists. Please choose another name.")
       logger::log_error(msg)
       rlang::abort(msg)
     }
@@ -132,7 +133,7 @@ create_lambda_dockerfile <-
     )
 
     if (!checkmate::test_file_exists(runtime_path)) {
-      msg <- glue::glue("[create_lambda_dockerfile] Can't access runtime script file {runtime_path}.")
+      msg <- glue("[create_lambda_dockerfile] Can't access runtime script file {runtime_path}.")
       logger::log_error(msg)
       rlang::abort(msg)
     }
@@ -374,7 +375,7 @@ create_lambda_function <-
     lambda_service <- aws_connect("lambda")
     lambda <- lambda_service$create_function(
       FunctionName = tag,
-      Code = list(ImageUri = glue::glue("{ecr_image_uri}:latest")),
+      Code = list(ImageUri = glue("{ecr_image_uri}:latest")),
       PackageType = "Image",
       Role = lambda_role_arn,
       Environment = envvar_list,
