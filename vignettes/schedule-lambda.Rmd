@@ -179,7 +179,7 @@ the rule.
 # connect to the EventBridge service
 events_service <- r2lambda::aws_connect("eventbridge")
 # find the names of all rules we need
-schedule_rules <- events_service$list_rules()[[1]] %>% sapply("[[", 1)
+schedule_rules <- events_service$list_rules()[[1]] |> sapply("[[", 1)
 
 # find the targets associated with the rule we want to remove
 rule_to_remove <- schedule_rules[[1]]
@@ -188,7 +188,7 @@ target_arn_to_remove <- events_service$list_targets_by_rule(Rule = rule_to_remov
 events_service$remove_targets(Rule = rule_to_remove, Ids = target_arn_to_remove)
 events_service$delete_rule(Name = rule_to_remove)
 
-events_service$list_rules()[[1]] %>% sapply("[[", 1)
+events_service$list_rules()[[1]] |> sapply("[[", 1)
 
 ```
 
@@ -196,7 +196,7 @@ Finally, to remove the Lambda:
 
 ```{r}
 lambda_service <- r2lambda::aws_connect("lambda")
-lambda_service$list_functions()$Functions %>% sapply("[[","FunctionName")
+lambda_service$list_functions()$Functions |> sapply("[[","FunctionName")
 lambda_service$delete_function(FunctionName = "parity1")
 ```
 

@@ -78,7 +78,7 @@ test_lambda <- function(tag, payload) {
 
   logger::log_info("[test_lambda] Checking image tag exists.")
   images <- docker_cli$image$list()
-  tags <- images[["repo_tags"]] %>% unlist()
+  tags <- images[["repo_tags"]] |> unlist()
   tag_exists <- repo_tag %in% tags
 
   if (!tag_exists) {
@@ -149,6 +149,7 @@ test_lambda <- function(tag, payload) {
 #'     )
 #'
 #' }
+#' @importFrom paws ecr iam lambda s3 eventbridge
 #' @export
 deploy_lambda <-
   function(tag, set_aws_envvars = FALSE, ...) {

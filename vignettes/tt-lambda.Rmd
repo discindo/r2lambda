@@ -185,8 +185,8 @@ Just like in the local test, the response payload comes as a raw vector that nee
 be parsed into a data.frame:
 
 ```{r}
-tidytuesday_dataset <- response$Payload %>% 
-  rawToChar() %>% 
+tidytuesday_dataset <- response$Payload |> 
+  rawToChar() |> 
   jsonlite::fromJSON(simplifyDataFrame = TRUE)
 
 tidytuesday_dataset[[1]][1:5, 1:5]

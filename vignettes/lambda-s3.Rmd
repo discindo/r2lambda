@@ -140,7 +140,7 @@ tt_dataset <- s3_service$get_object(
 )
 
 # convert from raw and show the first few rows
-tt_dataset$Body %>% unserialize() %>% head()
+tt_dataset$Body |> unserialize() |> head()
 ```
 
 Now we should have everything we need to write our Lambda function.
