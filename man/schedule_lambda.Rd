@@ -11,16 +11,16 @@ schedule_lambda(lambda_function, execution_rate)
 is done internally make sure the Lambda exists and fetch its ARN.}
 
 \item{execution_rate}{character, the rate to run the lambda function. Can use
-`rate` or `cron` specification. For details consult the official documentation:
-https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html}
+`rate` or `cron` specification. For details consult the official documentation: # nolint
+https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html # nolint}
 }
 \description{
 Put a deployed lambda function on a schedule
 }
 \examples{
 \dontrun{
-  # Make Tidytuesday lambda fetch the Tidytuesday dataset every wednesday at 8 am
-  schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+  # Make Tidytuesday lambda fetch the Tidytuesday dataset every wednesday
+at 8 am schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
 }
 
 }

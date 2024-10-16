@@ -7,7 +7,7 @@
 test_lambda(tag, payload)
 }
 \arguments{
-\item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`)}
+\item{tag}{The tag of an existing local image tagged with ECR repo (see `build_lambda`) # nolint}
 
 \item{payload}{Named list. Arguments to lambda function.}
 }
@@ -20,5 +20,4 @@ test a lambda locally
   tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
   test_lambda(tag, payload)
 }
-
 }
