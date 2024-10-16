@@ -82,14 +82,14 @@ test_lambda <- function(tag, payload) {
   tag_exists <- repo_tag %in% tags
 
   if (!tag_exists) {
-    msg <- glue::glue("[test_lambda] Image tagged {repo_tag} not found.")
+    msg <- glue("[test_lambda] Image tagged {repo_tag} not found.")
     logger::log_error(msg)
-    message("Available images:\n", glue::glue_collapse(sep = "\n", tags))
+    message("Available images:\n", glue_collapse(sep = "\n", tags))
     rlang::abort(msg)
   }
 
   uid <- uuid::UUIDgenerate(1)
-  logger::log_info(glue::glue("[test_lambda] Starting lambda container with name {uid}."))
+  logger::log_info(glue("[test_lambda] Starting lambda container with name {uid}."))
   docker_cli$container$run(
     image = repo_tag,
     port = "9000:8080",
@@ -221,16 +221,16 @@ deploy_lambda <-
     )
 
     logger::log_warn("[deploy_lambda] Lambda function created successfully.")
-    logger::log_warn(glue::glue(
+    logger::log_warn(glue(
       "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
     ))
     logger::log_warn(
-      glue::glue(
+      glue(
         "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`"
       )
     )
     logger::log_warn(
-      glue::glue(
+      glue(
         "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`"
       )
     )
@@ -289,7 +289,7 @@ invoke_lambda <-
       ), error = function(e) e$message)
 
     } else {
-      logger::log_info(glue::glue("[invoke_lambda] Failed to invoke the function due to {state} state."))
+      logger::log_info(glue("[invoke_lambda] Failed to invoke the function due to {state} state."))
       logger::log_info("[invoke_lambda] Please try again shortly if the reported state was `Pending`.")
     }
 
@@ -329,7 +329,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   lambda_names <- sapply(fun_list$Functions, "[[", "FunctionName")
 
   if (!lambda_function %in% lambda_names) {
-    msg <- glue::glue("[schedule_lambda] Cannot find deployed lambda function {lambda_function}")
+    msg <- glue("[schedule_lambda] Cannot find deployed lambda function {lambda_function}")
     logger::log_error(msg)
     rlang::abort(msg)
   }
@@ -339,7 +339,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   lambda_function_arn <- fun_list$Functions[[lambda_index]]$FunctionArn
 
   rate_clean <- gsub("\\(|\\)| |\\*|\\?", "_", execution_rate)
-  rule_name <- glue::glue("schedule_rule_{rate_clean}_{lambda_function}")
+  rule_name <- glue("schedule_rule_{rate_clean}_{lambda_function}")
   logger::log_info("[schedule_lambda] Creating event schedule rule with name {rule_name}")
 
   rule_arn <- tryCatch(
@@ -352,7 +352,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
     }
   )
 
-  event_name <- glue::glue("schedule_event_{rate_clean}_{lambda_function}")
+  event_name <- glue("schedule_event_{rate_clean}_{lambda_function}")
   logger::log_info("[schedule_lambda] Adding permission to execute lambda to event with name {event_name}")
   tryCatch(
     expr = {
