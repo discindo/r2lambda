@@ -8,6 +8,7 @@ build_lambda(
   tag,
   runtime_function,
   runtime_path,
+  support_path = NULL,
   renvlock_path = NULL,
   dependencies = NULL
 )
@@ -19,9 +20,13 @@ build_lambda(
 
 \item{runtime_path}{path to the script containing the runtime function}
 
-\item{renvlock_path}{path to the renv.lock file (if any)}
+\item{support_path}{path to the support files (if any). Either NULL 
+(the default) if all needed code is in the same `runtime_path` script, or a 
+character vector of paths to additional files needed by the runtime script.}
 
-\item{dependencies}{list of dependencies (if any)}
+\item{renvlock_path}{path to the renv.lock file (if any). Default is NULL.}
+
+\item{dependencies}{list of dependencies (if any). Default is NULL.}
 }
 \description{
 build and tag lambda image locally
