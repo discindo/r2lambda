@@ -53,9 +53,21 @@ test_that("runtime_line works with correct input", {
   expect_equal(test, 'CMD ["my_fun"]')
 })
 
+test_that("renv_line works", {
+  expect_error(renv_line(renvlock = 1))
+
+  renvlock <- renv_line("renv.lock")
+  test <- glue::glue_collapse(
+    c(
+      "COPY renv.lock renv.lock",
+      "RUN Rscript -e 'renv::restore()'"
+    ),
+    sep = "\n"
+  )
+  expect_equal(test, renvlock)
+})
 
 #####
-
 
 test_that("create_lambda_dockerfile works with correct input", {
   folder <- tempdir()
