@@ -47,6 +47,7 @@
 <span>  <span class="va">tag</span>,</span>
 <span>  <span class="va">runtime_function</span>,</span>
 <span>  <span class="va">runtime_path</span>,</span>
+<span>  support_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  renvlock_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dependencies <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -68,12 +69,18 @@
 <dd><p>path to the script containing the runtime function</p></dd>
 
 
+<dt id="arg-support-path">support_path<a class="anchor" aria-label="anchor" href="#arg-support-path"></a></dt>
+<dd><p>path to the support files (if any). Either NULL
+(the default) if all needed code is in the same `runtime_path` script, or a
+character vector of paths to additional files needed by the runtime script.</p></dd>
+
+
 <dt id="arg-renvlock-path">renvlock_path<a class="anchor" aria-label="anchor" href="#arg-renvlock-path"></a></dt>
-<dd><p>path to the renv.lock file (if any)</p></dd>
+<dd><p>path to the renv.lock file (if any). Default is NULL.</p></dd>
 
 
 <dt id="arg-dependencies">dependencies<a class="anchor" aria-label="anchor" href="#arg-dependencies"></a></dt>
-<dd><p>list of dependencies (if any)</p></dd>
+<dd><p>list of dependencies (if any). Default is NULL.</p></dd>
 
 </dl></div>
     <div class="section level2">
