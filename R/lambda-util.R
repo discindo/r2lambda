@@ -71,6 +71,15 @@ runtime_line <- function(runtime) {
   glue("CMD [{rt}]")
 }
 
+#' renv_line
+#' @noRd
+renv_line <- function(renvlock_path) {
+  checkmate::assert_character(renvlock_path)
+  cmd1 <- glue("COPY {renvlock_path} renv.lock")
+  cmd2 <- glue("RUN Rscript -e 'renv::restore()'")
+  glue_collapse(c(cmd1, cmd2), sep = "\n")
+}
+
 #' parse password from ecr token
 #' @noRd
 parse_password <- function(ecr_token) {
@@ -85,7 +94,12 @@ parse_password <- function(ecr_token) {
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param dependencies list of dependencies
+#' @param renvlock_path path to the renv.lock file (if any)
+#' @param dependencies list of dependencies (if any)
+#' 
+#' @details Use either `renvlock_path` or `dependencies` to install required
+#' packages, not both. By default, both are `NULL`, so the Docker image will
+#' have no additional packages installed.
 #'
 #' @examples
 #' \dontrun{
@@ -110,7 +124,8 @@ create_lambda_dockerfile <-
   function(folder,
            runtime_function,
            runtime_path,
-           dependencies) {
+           renvlock_path = NULL,
+           dependencies = NULL) {
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
     checkmate::assert_character(
@@ -155,6 +170,29 @@ create_lambda_dockerfile <-
       null.ok = TRUE
     )
 
+    checkmate::assert_character(
+      x = renvlock_path,
+      min.chars = 1,
+      null.ok = TRUE
+    )
+
+    if (!is.null(renvlock_path)) {
+      if (!checkmate::test_file_exists(renvlock_path)) {
+        msg <- glue(
+          "[create_lambda_dockerfile] Can't access renv.lock file {renvlock_path}." # nolint
+        )
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
+    }
+
+    # Can't use both dependencies and renvlock
+    if (!is.null(renvlock_path) && !is.null(dependencies)) {
+      msg <- "[create_lambda_dockerfile] Can't use both dependencies and renv." 
+      logger::log_error(msg)
+      rlang::abort(msg)
+    }
+
     logger::log_debug(
       "[create_lambda_dockerfile] Creating directory with Dockerfile and runtime script." # nolint
     )
@@ -186,6 +224,15 @@ create_lambda_dockerfile <-
     if (!is.null(dependencies)) {
       deps_string <- install_deps_line(deps = c(dependencies))
       write(deps_string,
+        file = file.path(folder, "Dockerfile"),
+        append = TRUE
+      )
+    }
+
+    if (!is.null(renvlock_path)) {
+      file.copy(renvlock_path, folder)
+      renv_string <- renv_line(basename(renvlock_path))
+      write(renv_string,
         file = file.path(folder, "Dockerfile"),
         append = TRUE
       )
