@@ -70,7 +70,7 @@ test_that("renv_line works", {
 #####
 
 test_that("create_lambda_dockerfile works with correct input", {
-  folder <- tempdir()
+  folder <- file.path(tempdir(), "test1")
   unlink(folder, recursive = TRUE)
 
   runtime_function <- "parity"
@@ -90,7 +90,7 @@ test_that("create_lambda_dockerfile works with correct input", {
 })
 
 test_that("create_lambda_dockerfile fails as expected", {
-  folder <- tempdir()
+  folder <- file.path(tempdir(), "test2")
   unlink(folder, recursive = TRUE)
 
   runtime_function <- "party"
@@ -168,35 +168,35 @@ test_that("create_lambda_dockerfile fails as expected", {
 #####
 
 test_that("create_lambda_image fails ok when inputs are incorrect", {
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   unlink(folder, recursive = TRUE, force = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   expect_error(create_lambda_image(folder = folder, tag = tag))
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   file.create(file.path(folder, "Dockerfile"))
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   file.create(file.path(folder, "runtime.R"))
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   file.create(file.path(folder, "Dockerfile"))
   file.create(file.path(folder, "runtime.R"))
@@ -204,20 +204,26 @@ test_that("create_lambda_image fails ok when inputs are incorrect", {
   unlink(folder, recursive = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   file.create(file.path(folder, "Dockerfile"))
-  write(x = "test that file is not empty", file.path(folder, "Dockerfile"), append = TRUE)
+  write(
+    x = "test that file is not empty",
+    file.path(folder, "Dockerfile"), append = TRUE
+  )
   file.create(file.path(folder, "runtime.R"))
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 
   tag <- "testtag"
-  folder <- tempdir()
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
   dir.create(folder)
   file.create(file.path(folder, "Dockerfile"))
   file.create(file.path(folder, "runtime.R"))
-  write(x = "test that file is not empty", file.path(folder, "runtime.R"), append = TRUE)
+  write(
+    x = "test that file is not empty",
+    file.path(folder, "runtime.R"), append = TRUE
+  )
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 })
