@@ -43,7 +43,13 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">build_lambda</span><span class="op">(</span><span class="va">tag</span>, <span class="va">runtime_function</span>, <span class="va">runtime_path</span>, <span class="va">dependencies</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">build_lambda</span><span class="op">(</span></span>
+<span>  <span class="va">tag</span>,</span>
+<span>  <span class="va">runtime_function</span>,</span>
+<span>  <span class="va">runtime_path</span>,</span>
+<span>  renvlock_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  dependencies <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -62,10 +68,20 @@
 <dd><p>path to the script containing the runtime function</p></dd>
 
 
+<dt id="arg-renvlock-path">renvlock_path<a class="anchor" aria-label="anchor" href="#arg-renvlock-path"></a></dt>
+<dd><p>path to the renv.lock file (if any)</p></dd>
+
+
 <dt id="arg-dependencies">dependencies<a class="anchor" aria-label="anchor" href="#arg-dependencies"></a></dt>
-<dd><p>list of dependencies</p></dd>
+<dd><p>list of dependencies (if any)</p></dd>
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Use either `renvlock_path` or `dependencies` to install required
+packages, not both. By default, both are `NULL`, so the Docker image will
+have no additional packages installed.</p>
+    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
