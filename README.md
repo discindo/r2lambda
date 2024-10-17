@@ -50,6 +50,7 @@ details on setting credentials, region, profile, etc.
 ``` r
 runtime_function <- "parity"
 runtime_path <- system.file("parity.R", package = "r2lambda")
+renvlock_path <- system.file("renv.lock", package = "r2lambda")
 dependencies <- NULL
 
 # Might take a while, its building a docker image
@@ -57,6 +58,7 @@ build_lambda(
   tag = "parity1",
   runtime_function = runtime_function,
   runtime_path = runtime_path,
+  renvlock_path = renvlock_path,
   dependencies = dependencies
 )
 ```
