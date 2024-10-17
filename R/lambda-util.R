@@ -71,6 +71,13 @@ runtime_line <- function(runtime) {
   glue("CMD [{rt}]")
 }
 
+#' support script line
+#' @noRd
+support_line <- function(support) {
+  checkmate::assert_character(support)
+  glue("COPY {support} {support}")
+}
+
 #' renv_line
 #' @noRd
 renv_line <- function(renvlock_path) {
@@ -93,7 +100,9 @@ parse_password <- function(ecr_token) {
 #'
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
-#' @param runtime_path path to the script containing the runtime function
+#' @param runtime_path path to the script containing the runtime function 
+#' @param support_path path to the supporting code (if any). Can be `NULL` 
+#' (default) or a character vector of paths to scripts.
 #' @param renvlock_path path to the renv.lock file (if any)
 #' @param dependencies list of dependencies (if any)
 #' 
@@ -124,6 +133,7 @@ create_lambda_dockerfile <-
   function(folder,
            runtime_function,
            runtime_path,
+           support_path = NULL,
            renvlock_path = NULL,
            dependencies = NULL) {
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
@@ -152,7 +162,6 @@ create_lambda_dockerfile <-
     checkmate::assert_character(
       x = runtime_path,
       min.chars = 1,
-      len = 1,
       any.missing = FALSE
     )
 
@@ -162,6 +171,24 @@ create_lambda_dockerfile <-
       )
       logger::log_error(msg)
       rlang::abort(msg)
+    }
+
+    checkmate::assert_character(
+      x = support_path,
+      min.chars = 1,
+      null.ok = TRUE
+    )
+
+    if (!is.null(support_path)) {
+      lapply(support_path, function(x) {
+        if (!checkmate::test_file_exists(x)) {
+          msg <- glue(
+            "[create_lambda_dockerfile] Can't access support script {x}."
+          )
+          logger::log_error(msg)
+          rlang::abort(msg)
+        }
+      })
     }
 
     checkmate::assert_character(
@@ -211,6 +238,12 @@ create_lambda_dockerfile <-
       to = file.path(folder, "runtime.R")
     )
 
+    if (!is.null(support_path)) {
+      lapply(support_path, function(x) {
+        file.copy(x, folder)
+      })
+    }
+
     file.copy(docker_template, folder, recursive = FALSE)
     file.rename(
       from = file.path(folder, basename(docker_template)),
@@ -244,6 +277,16 @@ create_lambda_dockerfile <-
       file = file.path(folder, "Dockerfile"),
       append = TRUE
     )
+
+    if (!is.null(support_path)) {
+      lapply(support_path, function(x) {
+        support_string <- support_line(basename(x))
+        write(support_string,
+          file = file.path(folder, "Dockerfile"),
+          append = TRUE
+        )
+      })
+    }
 
     logger::log_debug("[create_lambda_dockerfile] Done.")
   }
