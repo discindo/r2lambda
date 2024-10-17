@@ -1,4 +1,3 @@
-
 if (FALSE) { # only in in interactive session
 
   test_that("aws_connect fails ok when bad service is requested", {
@@ -11,7 +10,6 @@ if (FALSE) { # only in in interactive session
 }
 
 test_that("install_deps_line fails ok with incorrect input", {
-
   deps <- list("a")
   expect_error(install_deps_line(deps = deps))
 
@@ -20,11 +18,9 @@ test_that("install_deps_line fails ok with incorrect input", {
 
   deps <- c(1)
   expect_error(install_deps_line(deps = deps))
-
 })
 
 test_that("runtime_line fails ok with incorrect input", {
-
   runtime <- list("a")
   expect_error(runtime_line(runtime = runtime))
 
@@ -33,7 +29,6 @@ test_that("runtime_line fails ok with incorrect input", {
 
   runtime <- c(1)
   expect_error(runtime_line(runtime = runtime))
-
 })
 
 test_that("parse_password works", {
@@ -58,13 +53,25 @@ test_that("runtime_line works with correct input", {
   expect_equal(test, 'CMD ["my_fun"]')
 })
 
+test_that("renv_line works", {
+  expect_error(renv_line(renvlock = 1))
+
+  renvlock <- renv_line("renv.lock")
+  test <- glue::glue_collapse(
+    c(
+      "COPY renv.lock renv.lock",
+      "RUN Rscript -e 'renv::restore()'"
+    ),
+    sep = "\n"
+  )
+  expect_equal(test, renvlock)
+})
 
 #####
 
-folder <- tempdir()
-unlink(folder, recursive = TRUE)
-
 test_that("create_lambda_dockerfile works with correct input", {
+  folder <- file.path(tempdir(), "test1")
+  unlink(folder, recursive = TRUE)
 
   runtime_function <- "parity"
   runtime_path <- system.file("parity.R", package = "r2lambda")
@@ -75,7 +82,7 @@ test_that("create_lambda_dockerfile works with correct input", {
     runtime_function = runtime_function,
     runtime_path = runtime_path,
     dependencies = dependencies
-    )
+  )
 
   expect_true(dir.exists(folder))
   expect_equal(dir(folder), c("Dockerfile", "runtime.R"))
@@ -83,6 +90,8 @@ test_that("create_lambda_dockerfile works with correct input", {
 })
 
 test_that("create_lambda_dockerfile fails as expected", {
+  folder <- file.path(tempdir(), "test2")
+  unlink(folder, recursive = TRUE)
 
   runtime_function <- "party"
   runtime_path <- system.file("party.R", package = "r2lambda")
@@ -90,11 +99,12 @@ test_that("create_lambda_dockerfile fails as expected", {
 
   expect_error(
     create_lambda_dockerfile(
-    folder = folder,
-    runtime_function = runtime_function,
-    runtime_path = runtime_path,
-    dependencies = dependencies
-  ))
+      folder = folder,
+      runtime_function = runtime_function,
+      runtime_path = runtime_path,
+      dependencies = dependencies
+    )
+  )
   unlink(folder, recursive = TRUE)
 
   runtime_function <- list("party")
@@ -107,7 +117,8 @@ test_that("create_lambda_dockerfile fails as expected", {
       runtime_function = runtime_function,
       runtime_path = runtime_path,
       dependencies = dependencies
-    ))
+    )
+  )
   unlink(folder, recursive = TRUE)
 
   runtime_function <- NA
@@ -151,65 +162,68 @@ test_that("create_lambda_dockerfile fails as expected", {
     )
   )
   unlink(folder, recursive = TRUE)
-
 })
 
 
 #####
 
-folder <- tempdir()
-unlink(folder, recursive = TRUE)
-
 test_that("create_lambda_image fails ok when inputs are incorrect", {
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  unlink(folder, recursive = TRUE, force = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    expect_error(create_lambda_image(folder = folder, tag = tag))
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  expect_error(create_lambda_image(folder = folder, tag = tag))
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    file.create(file.path(folder, "Dockerfile"))
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  file.create(file.path(folder, "Dockerfile"))
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    file.create(file.path(folder, "runtime.R"))
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  file.create(file.path(folder, "runtime.R"))
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    file.create(file.path(folder, "Dockerfile"))
-    file.create(file.path(folder, "runtime.R"))
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  file.create(file.path(folder, "Dockerfile"))
+  file.create(file.path(folder, "runtime.R"))
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    file.create(file.path(folder, "Dockerfile"))
-    write(x = "test that file is not empty", file.path(folder, "Dockerfile"), append = TRUE)
-    file.create(file.path(folder, "runtime.R"))
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  file.create(file.path(folder, "Dockerfile"))
+  write(
+    x = "test that file is not empty",
+    file.path(folder, "Dockerfile"), append = TRUE
+  )
+  file.create(file.path(folder, "runtime.R"))
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 
-    tag <- "testtag"
-    folder <- tempdir()
-    dir.create(folder)
-    file.create(file.path(folder, "Dockerfile"))
-    file.create(file.path(folder, "runtime.R"))
-    write(x = "test that file is not empty", file.path(folder, "runtime.R"), append = TRUE)
-    expect_error(create_lambda_image(folder = folder, tag = tag))
-    unlink(folder, recursive = TRUE)
-
+  tag <- "testtag"
+  folder <- file.path(tempdir(), paste0("test", runif(1)))
+  dir.create(folder)
+  file.create(file.path(folder, "Dockerfile"))
+  file.create(file.path(folder, "runtime.R"))
+  write(
+    x = "test that file is not empty",
+    file.path(folder, "runtime.R"), append = TRUE
+  )
+  expect_error(create_lambda_image(folder = folder, tag = tag))
+  unlink(folder, recursive = TRUE)
 })

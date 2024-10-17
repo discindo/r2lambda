@@ -3,10 +3,18 @@
 #' @param tag A name for the Docker container and Lambda function
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param dependencies list of dependencies
+#' @param renvlock_path path to the renv.lock file (if any)
+#' @param dependencies list of dependencies (if any)
+#' 
+#' @details Use either `renvlock_path` or `dependencies` to install required
+#' packages, not both. By default, both are `NULL`, so the Docker image will
+#' have no additional packages installed.
+#' 
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
-build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
+build_lambda <- function(
+  tag, runtime_function, runtime_path, 
+  renvlock_path = NULL, dependencies = NULL) {
 
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
@@ -22,6 +30,7 @@ build_lambda <- function(tag, runtime_function, runtime_path, dependencies) {
         folder = folder,
         runtime_function = runtime_function,
         runtime_path = runtime_path,
+        renvlock_path = renvlock_path,
         dependencies = dependencies
       )
     },
