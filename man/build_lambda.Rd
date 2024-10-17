@@ -4,7 +4,13 @@
 \alias{build_lambda}
 \title{build and tag lambda image locally}
 \usage{
-build_lambda(tag, runtime_function, runtime_path, dependencies)
+build_lambda(
+  tag,
+  runtime_function,
+  runtime_path,
+  renvlock_path = NULL,
+  dependencies = NULL
+)
 }
 \arguments{
 \item{tag}{A name for the Docker container and Lambda function}
@@ -13,8 +19,15 @@ build_lambda(tag, runtime_function, runtime_path, dependencies)
 
 \item{runtime_path}{path to the script containing the runtime function}
 
-\item{dependencies}{list of dependencies}
+\item{renvlock_path}{path to the renv.lock file (if any)}
+
+\item{dependencies}{list of dependencies (if any)}
 }
 \description{
 build and tag lambda image locally
+}
+\details{
+Use either `renvlock_path` or `dependencies` to install required
+packages, not both. By default, both are `NULL`, so the Docker image will
+have no additional packages installed.
 }
