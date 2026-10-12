@@ -122,3 +122,12 @@ test_that("docker reports failures with the command and its error", {
     "docker build. failed with exit status 125"
   )
 })
+
+test_that("find_local_image refuses ambiguous tags", {
+  local_mocked_bindings(
+    docker = function(args, ...) {
+      c("a.example/parity:latest", "b.example/parity:latest", "x:latest")
+    }
+  )
+  expect_error(find_local_image("parity"), "Several images")
+})

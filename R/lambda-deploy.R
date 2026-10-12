@@ -211,16 +211,18 @@ deploy_lambda <-
     }
     ## Other inputs are validated by lower-level functions
 
-    # Check the image before uploading it, so an unsupported one fails early.
-    architecture <- image_architecture(find_local_image(tag))
+    # Check the image that will be pushed before uploading it, so an
+    # unsupported one fails early.
+    ecr_image_uri <- fetch_ecr_repo(tag)
+    architecture <- image_architecture(paste0(ecr_image_uri, ":latest"))
     logger::log_info("[deploy_lambda] Image architecture: {architecture}.")
 
     logger::log_info(
       "[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while."
     )
-    ecr_image_uri <- tryCatch(
+    tryCatch(
       expr = {
-        push_lambda_image(tag = tag)
+        push_lambda_image(repo_uri = ecr_image_uri)
       },
       error = function(e) {
         msg <- "Failed to push Lambda Docker image to AWS ECR."
