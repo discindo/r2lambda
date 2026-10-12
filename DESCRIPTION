@@ -21,7 +21,6 @@ Imports:
     logger,
     paws,
     rlang,
-    stevedore,
     sys,
     uuid
 Suggests: 
