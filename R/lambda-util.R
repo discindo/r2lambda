@@ -1,22 +1,10 @@
-is_aws_cli_installed <- function() {
-  which_aws <- Sys.which("aws")
-  IS_AWS_INSTALLED <- ifelse(which_aws[[1]] == "", FALSE, TRUE)
-  checkmate::assert_true(IS_AWS_INSTALLED)
-}
-
 is_docker_installed <- function() {
-  which_docker <- Sys.which("docker")
-  IS_DOCKER_INSTALLED <- ifelse(which_docker[[1]] == "", FALSE, TRUE)
-  checkmate::assert_true(IS_DOCKER_INSTALLED)
+  checkmate::assert_true(nzchar(Sys.which("docker")))
 }
 
 #' check_system_deps
 #' @noRd
 check_system_dependencies <- function() {
-  # logger::log_debug(
-  # "[check_system_dependencies] Checking if `aws cli` is installed.")
-  # is_aws_cli_installed()
-
   logger::log_debug(
     "[check_system_dependencies] Checking if `docker` is installed."
   )
@@ -47,7 +35,7 @@ aws_connect <- function(service) {
 
   logger::log_debug("[aws_connect] Connecting to AWS.")
 
-  .service <- utils::getFromNamespace(service, "paws")
+  .service <- get(service, envir = asNamespace("paws"))
   .service()
 }
 
@@ -83,7 +71,7 @@ support_line <- function(support) {
 renv_line <- function(renvlock_path) {
   checkmate::assert_character(renvlock_path)
   cmd1 <- glue("COPY {renvlock_path} renv.lock")
-  cmd2 <- glue("RUN Rscript -e 'renv::restore()'")
+  cmd2 <- "RUN Rscript -e 'renv::restore()'"
   glue_collapse(c(cmd1, cmd2), sep = "\n")
 }
 
@@ -100,12 +88,12 @@ parse_password <- function(ecr_token) {
 #'
 #' @param folder path to store the Dockerfile
 #' @param runtime_function name of the runtime function
-#' @param runtime_path path to the script containing the runtime function 
-#' @param support_path path to the supporting code (if any). Can be `NULL` 
+#' @param runtime_path path to the script containing the runtime function
+#' @param support_path path to the supporting code (if any). Can be `NULL`
 #' (default) or a character vector of paths to scripts.
 #' @param renvlock_path path to the renv.lock file (if any)
 #' @param dependencies list of dependencies (if any)
-#' 
+#'
 #' @details Use either `renvlock_path` or `dependencies` to install required
 #' packages, not both. By default, both are `NULL`, so the Docker image will
 #' have no additional packages installed.
@@ -130,12 +118,14 @@ parse_password <- function(ecr_token) {
 #' }
 #' @noRd
 create_lambda_dockerfile <-
-  function(folder,
-           runtime_function,
-           runtime_path,
-           support_path = NULL,
-           renvlock_path = NULL,
-           dependencies = NULL) {
+  function(
+    folder,
+    runtime_function,
+    runtime_path,
+    support_path = NULL,
+    renvlock_path = NULL,
+    dependencies = NULL
+  ) {
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
     checkmate::assert_character(
@@ -215,7 +205,7 @@ create_lambda_dockerfile <-
 
     # Can't use both dependencies and renvlock
     if (!is.null(renvlock_path) && !is.null(dependencies)) {
-      msg <- "[create_lambda_dockerfile] Can't use both dependencies and renv." 
+      msg <- "[create_lambda_dockerfile] Can't use both dependencies and renv."
       logger::log_error(msg)
       rlang::abort(msg)
     }
@@ -256,32 +246,24 @@ create_lambda_dockerfile <-
 
     if (!is.null(dependencies)) {
       deps_string <- install_deps_line(deps = c(dependencies))
-      write(deps_string,
-        file = file.path(folder, "Dockerfile"),
-        append = TRUE
-      )
+      write(deps_string, file = file.path(folder, "Dockerfile"), append = TRUE)
     }
 
     if (!is.null(renvlock_path)) {
       file.copy(renvlock_path, folder)
       renv_string <- renv_line(basename(renvlock_path))
-      write(renv_string,
-        file = file.path(folder, "Dockerfile"),
-        append = TRUE
-      )
+      write(renv_string, file = file.path(folder, "Dockerfile"), append = TRUE)
     }
 
     runtime_string <- runtime_line(runtime_function)
 
-    write(runtime_string,
-      file = file.path(folder, "Dockerfile"),
-      append = TRUE
-    )
+    write(runtime_string, file = file.path(folder, "Dockerfile"), append = TRUE)
 
     if (!is.null(support_path)) {
       lapply(support_path, function(x) {
         support_string <- support_line(basename(x))
-        write(support_string,
+        write(
+          support_string,
           file = file.path(folder, "Dockerfile"),
           append = TRUE
         )
@@ -322,7 +304,7 @@ fetch_ecr_repo <- function(tag) {
 
 #' create_lambda_container
 #'
-#' @param folder path to the folder containing the lambda runtime 
+#' @param folder path to the folder containing the lambda runtime
 #' script and Dockerfile
 #' @param tag a tag for the image
 #' @noRd
@@ -469,11 +451,7 @@ delete_lambda_exec_role <- function(tag) {
 #'
 #' @noRd
 create_lambda_function <-
-  function(tag,
-           ecr_image_uri,
-           lambda_role_arn,
-           set_aws_envvars = FALSE,
-           ...) {
+  function(tag, ecr_image_uri, lambda_role_arn, set_aws_envvars = FALSE, ...) {
     logger::log_debug("[create_lambda_function] Validating inputs.")
     checkmate::assert_character(tag)
 
@@ -517,9 +495,9 @@ delete_lambda_function <- function(tag) {
 
 #' Create a rule for event schedule
 #'
-#' @param rule_name character, the name of the rule (used later when adding 
+#' @param rule_name character, the name of the rule (used later when adding
 #' targets to the event)
-#' @param rate character, the rate at which we want the function to run, 
+#' @param rate character, the rate at which we want the function to run,
 #' e.g., `5 minutes`, `1 minute`
 #'
 #' @noRd
@@ -556,10 +534,10 @@ create_event_rule_for_schedule <- function(rule_name, rate) {
 #'
 #' @noRd
 lambda_add_permission_for_schedule <-
-  function(function_name,
-           scheduled_event_name,
-           scheduled_rule_arn) {
-    logger::log_debug("[lambda_add_permission_for_schedule] Adding permission for event schedule.") # nolint
+  function(function_name, scheduled_event_name, scheduled_rule_arn) {
+    logger::log_debug(
+      "[lambda_add_permission_for_schedule] Adding permission for event schedule."
+    ) # nolint
     aws_lambda <- aws_connect("lambda")
     aws_lambda$add_permission(
       FunctionName = function_name,
@@ -584,7 +562,7 @@ add_lambda_to_eventridge <-
     )
     aws_event <- aws_connect("eventbridge")
     aws_event$put_targets(
-      Rule = rule_name, 
+      Rule = rule_name,
       Targets = list(list(Id = 1, Arn = lambda_function_arn))
     )
     logger::log_debug("[add_lambda_to_eventridge] Done.")

@@ -3,22 +3,26 @@
 #' @param tag A name for the Docker container and Lambda function
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
-#' @param support_path path to the support files (if any). Either NULL 
-#' (the default) if all needed code is in the same `runtime_path` script, or a 
+#' @param support_path path to the support files (if any). Either NULL
+#' (the default) if all needed code is in the same `runtime_path` script, or a
 #' character vector of paths to additional files needed by the runtime script.
 #' @param renvlock_path path to the renv.lock file (if any). Default is NULL.
 #' @param dependencies list of dependencies (if any). Default is NULL.
-#' 
+#'
 #' @details Use either `renvlock_path` or `dependencies` to install required
 #' packages, not both. By default, both are `NULL`, so the Docker image will
 #' have no additional packages installed.
-#' 
+#'
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
 build_lambda <- function(
-  tag, runtime_function, runtime_path, support_path = NULL,
-  renvlock_path = NULL, dependencies = NULL) {
-
+  tag,
+  runtime_function,
+  runtime_path,
+  support_path = NULL,
+  renvlock_path = NULL,
+  dependencies = NULL
+) {
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
 
@@ -74,7 +78,7 @@ build_lambda <- function(
 
 #' test a lambda locally
 #'
-#' @param tag The tag of an existing local image tagged with ECR repo 
+#' @param tag The tag of an existing local image tagged with ECR repo
 #' (see `build_lambda`)
 #' @param payload Named list. Arguments to lambda function.
 #'
@@ -87,7 +91,6 @@ build_lambda <- function(
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
 test_lambda <- function(tag, payload) {
-
   logger::log_info("[test_lambda] Converting payload list to json.")
   payload <- jsonlite::toJSON(payload, auto_unbox = TRUE)
 
@@ -186,7 +189,7 @@ deploy_lambda <-
 
     logger::log_info(
       "[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while."
-    ) 
+    )
     ecr_image_uri <- tryCatch(
       expr = {
         push_lambda_image(tag = tag)
@@ -219,12 +222,12 @@ deploy_lambda <-
 
     logger::log_warn(
       "[deploy_lambda] Created AWS role with basic lambda execution permissions." # nolint
-    ) 
+    )
     logger::log_warn(
       "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint
     )
 
-    ## TODO check if the role is OK before starting to create the lambda 
+    ## TODO check if the role is OK before starting to create the lambda
     ## As is, we are waiting ten seconds before creating the lambda
     ## but this could be too long in some cases or not long enough in other
     Sys.sleep(10)
@@ -258,10 +261,10 @@ deploy_lambda <-
       "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
     )
     logger::log_warn(
-        "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`" # nolint
+      "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`" # nolint
     )
     logger::log_warn(
-        "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`" # nolint
+      "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`" # nolint
     )
 
     logger::log_success("[deploy_lambda] Done.")
@@ -291,19 +294,17 @@ deploy_lambda <-
 #' }
 #' @export
 invoke_lambda <-
-  function(function_name,
-           invocation_type,
-           payload,
-           include_logs = FALSE) {
-
+  function(function_name, invocation_type, payload, include_logs = FALSE) {
     logger::log_info("[invoke_lambda] Validating inputs.")
 
     # assumes .Renviron is set up
     lambda_service <- aws_connect("lambda")
 
     logger::log_info("[invoke_lambda] Checking function state.")
-    state <- lambda_service$get_function(FunctionName = function_name)$Configuration$State # nolint
-    ## TODO: Should we also check `LastUpdateStatus` 
+    state <- lambda_service$get_function(
+      FunctionName = function_name
+    )$Configuration$State # nolint
+    ## TODO: Should we also check `LastUpdateStatus`
     ## (https://docs.aws.amazon.com/lambda/latest/dg/functions-states.html)
 
     if (state == "Active" || state == "Inactive") {
@@ -313,12 +314,13 @@ invoke_lambda <-
       logger::log_info("[invoke_lambda] Invoking function.")
       response <- tryCatch(
         lambda_service$invoke(
-        FunctionName = function_name,
-        InvocationType = invocation_type,
-        Payload = jsonlite::toJSON(payload),
-        LogType = ifelse(include_logs, "Tail", "None")
-      ), error = function(e) e$message)
-
+          FunctionName = function_name,
+          InvocationType = invocation_type,
+          Payload = jsonlite::toJSON(payload),
+          LogType = ifelse(include_logs, "Tail", "None")
+        ),
+        error = function(e) e$message
+      )
     } else {
       logger::log_info(
         "[invoke_lambda] Failed to invoke the function due to {state} state."
@@ -346,7 +348,7 @@ invoke_lambda <-
 #' is done internally make sure the Lambda exists and fetch its ARN.
 #' @param execution_rate character, the rate to run the lambda function. Can use
 #' `rate` or `cron` specification. For details see the official documentation:
-#' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html 
+#' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html
 #'
 #' @examples
 #' \dontrun{
@@ -357,7 +359,6 @@ invoke_lambda <-
 #' @export
 
 schedule_lambda <- function(lambda_function, execution_rate) {
-
   logger::log_info("[schedule_lambda] Validating inputs.")
   aws_lambda <- aws_connect("lambda")
   fun_list <- aws_lambda$list_functions()
@@ -381,13 +382,14 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   rule_name <- glue("schedule_rule_{rate_clean}_{lambda_function}")
   logger::log_info(
     "[schedule_lambda] Creating event schedule rule with name {rule_name}"
-  ) 
+  )
 
   rule_arn <- tryCatch(
     expr = {
       create_event_rule_for_schedule(
-        rule_name = rule_name, rate = execution_rate
-      ) 
+        rule_name = rule_name,
+        rate = execution_rate
+      )
     },
     error = function(e) {
       logger::log_error(e$message)
