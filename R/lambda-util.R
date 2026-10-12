@@ -51,6 +51,13 @@ install_deps_line <- function(deps) {
   glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
 }
 
+#' system_deps_line
+#' @noRd
+system_deps_line <- function(system_deps) {
+  pkgs <- glue_collapse(system_deps, sep = " ")
+  glue("RUN dnf -y install {pkgs} && dnf clean all")
+}
+
 #' runtime_line
 #' @noRd
 runtime_line <- function(runtime) {
@@ -122,6 +129,10 @@ docker <- function(args, std_in = NULL, capture = FALSE) {
 #' (default) or a character vector of paths to scripts.
 #' @param renvlock_path path to the renv.lock file (if any)
 #' @param dependencies list of dependencies (if any)
+#' @param system_deps character vector of Amazon Linux 2023 packages to
+#' install with `dnf` before the R packages, for R packages that need system
+#' libraries, e.g. `"udunits2"` for `units`. Amazon Linux 2023 has no EPEL, so
+#' some libraries, such as GDAL, are not available. Default is NULL.
 #'
 #' @details Use either `renvlock_path` or `dependencies` to install required
 #' packages, not both. By default, both are `NULL`, so the Docker image will
@@ -153,7 +164,8 @@ create_lambda_dockerfile <-
     runtime_path,
     support_path = NULL,
     renvlock_path = NULL,
-    dependencies = NULL
+    dependencies = NULL,
+    system_deps = NULL
   ) {
     logger::log_debug("[create_lambda_dockerfile] Validating inputs.")
 
@@ -216,6 +228,15 @@ create_lambda_dockerfile <-
       null.ok = TRUE
     )
 
+    # Package names go into a shell command, so allow only characters that
+    # appear in package names.
+    checkmate::assert_character(
+      x = system_deps,
+      pattern = "^[A-Za-z0-9][A-Za-z0-9._+-]*$",
+      any.missing = FALSE,
+      null.ok = TRUE
+    )
+
     checkmate::assert_character(
       x = renvlock_path,
       min.chars = 1,
@@ -272,6 +293,14 @@ create_lambda_dockerfile <-
     logger::log_debug(
       "[create_lambda_dockerfile] Updating Dockerfile with dependencies and runtime info." # nolint
     )
+
+    if (!is.null(system_deps)) {
+      write(
+        system_deps_line(system_deps),
+        file = file.path(folder, "Dockerfile"),
+        append = TRUE
+      )
+    }
 
     if (!is.null(dependencies)) {
       deps_string <- install_deps_line(deps = c(dependencies))

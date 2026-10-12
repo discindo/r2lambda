@@ -8,6 +8,10 @@
 #' character vector of paths to additional files needed by the runtime script.
 #' @param renvlock_path path to the renv.lock file (if any). Default is NULL.
 #' @param dependencies list of dependencies (if any). Default is NULL.
+#' @param system_deps character vector of Amazon Linux 2023 packages to
+#' install with `dnf` before the R packages, for R packages that need system
+#' libraries, e.g. `"udunits2"` for `units`. Amazon Linux 2023 has no EPEL, so
+#' some libraries, such as GDAL, are not available. Default is NULL.
 #'
 #' @details Use either `renvlock_path` or `dependencies` to install required
 #' packages, not both. By default, both are `NULL`, so the Docker image will
@@ -21,7 +25,8 @@ build_lambda <- function(
   runtime_path,
   support_path = NULL,
   renvlock_path = NULL,
-  dependencies = NULL
+  dependencies = NULL,
+  system_deps = NULL
 ) {
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
@@ -38,7 +43,8 @@ build_lambda <- function(
         runtime_path = runtime_path,
         renvlock_path = renvlock_path,
         support_path = support_path,
-        dependencies = dependencies
+        dependencies = dependencies,
+        system_deps = system_deps
       )
     },
     error = function(e) {
