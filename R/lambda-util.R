@@ -345,8 +345,10 @@ create_lambda_dockerfile <-
 #' Fetch or create ecr repo
 #'
 #' @param tag a tag for the image
+#' @param create logical, whether to create the repository if it doesn't
+#' exist. When `FALSE`, a missing repository is an error.
 #' @noRd
-fetch_ecr_repo <- function(tag) {
+fetch_ecr_repo <- function(tag, create = TRUE) {
   logger::log_debug("[fetch_ecr_repo] Checking if repository already exists.")
   ecr_service <- aws_connect("ecr")
 
@@ -363,6 +365,12 @@ fetch_ecr_repo <- function(tag) {
   if (length(repos) > 0) {
     logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
     repo_uri <- repos[[1]]$repositoryUri
+  } else if (!create) {
+    msg <- glue(
+      "[fetch_ecr_repo] No ECR repository named {tag}. Build the image with build_lambda() first." # nolint
+    )
+    logger::log_error(msg)
+    rlang::abort(msg)
   } else {
     logger::log_debug(
       "[fetch_ecr_repo] Creating new repository and fetching URI."

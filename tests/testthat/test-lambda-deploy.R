@@ -59,7 +59,7 @@ test_that("invoke_lambda sends unboxed JSON and returns the response", {
 test_that("deploy_lambda reports the AWS error when function creation fails", {
   local_mocked_bindings(
     push_lambda_image = function(repo_uri) repo_uri,
-    fetch_ecr_repo = function(tag) "reg/f",
+    fetch_ecr_repo = function(tag, create) "reg/f",
     image_architecture = function(image) "arm64",
     create_lambda_exec_role = function(tag, policy_arns) {
       list(Role = list(Arn = "arn"))
@@ -123,7 +123,7 @@ test_that("deploy_lambda uses an existing role without creating one", {
   used_role <- NULL
   local_mocked_bindings(
     push_lambda_image = function(repo_uri) repo_uri,
-    fetch_ecr_repo = function(tag) "reg/f",
+    fetch_ecr_repo = function(tag, create) "reg/f",
     image_architecture = function(image) "arm64",
     create_lambda_exec_role = function(...) stop("should not create a role"),
     create_lambda_function = function(
@@ -152,7 +152,7 @@ test_that("deploy_lambda creates the function for the image architecture", {
   args <- NULL
   local_mocked_bindings(
     push_lambda_image = function(repo_uri) repo_uri,
-    fetch_ecr_repo = function(tag) "reg/f",
+    fetch_ecr_repo = function(tag, create) "reg/f",
     image_architecture = function(image) "arm64",
     aws_connect = function(service) {
       list(create_function = function(...) {
@@ -176,7 +176,7 @@ test_that("image_architecture maps Docker architectures to Lambda ones", {
 
 test_that("deploy_lambda checks the image architecture before pushing", {
   local_mocked_bindings(
-    fetch_ecr_repo = function(tag) "reg/f",
+    fetch_ecr_repo = function(tag, create) "reg/f",
     docker = function(args, ...) "386",
     push_lambda_image = function(repo_uri) stop("should not push")
   )
@@ -194,7 +194,9 @@ test_that("deploy_lambda inspects and pushes the same image", {
   inspected <- NULL
   pushed <- NULL
   local_mocked_bindings(
-    fetch_ecr_repo = function(tag) "123.dkr.ecr.eu-west-1.amazonaws.com/f",
+    fetch_ecr_repo = function(tag, create) {
+      "123.dkr.ecr.eu-west-1.amazonaws.com/f"
+    },
     image_architecture = function(image) {
       inspected <<- image
       "x86_64"
@@ -207,4 +209,19 @@ test_that("deploy_lambda inspects and pushes the same image", {
   deploy_lambda("f", role_arn = "arn:aws:iam::1:role/existing")
   expect_equal(inspected, "123.dkr.ecr.eu-west-1.amazonaws.com/f:latest")
   expect_equal(pushed, "123.dkr.ecr.eu-west-1.amazonaws.com/f")
+})
+
+test_that("deploy_lambda looks up the repository without creating it", {
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(
+        describe_repositories = function(repositoryNames) {
+          stop("RepositoryNotFoundException (HTTP 400).")
+        },
+        create_repository = function(...) stop("should not create")
+      )
+    },
+    push_lambda_image = function(repo_uri) stop("should not push")
+  )
+  expect_error(deploy_lambda("myrep52"), "No ECR repository named myrep52")
 })
