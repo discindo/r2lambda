@@ -5,7 +5,10 @@
 #' @param runtime_path path to the script containing the runtime function
 #' @param support_path path to the support files (if any). Either NULL
 #' (the default) if all needed code is in the same `runtime_path` script, or a
-#' character vector of paths to additional files needed by the runtime script.
+#' character vector of paths to additional files or folders needed by the
+#' runtime script. Each is copied next to the runtime script under its own
+#' name, so `support_path = "R"` lets the runtime script
+#' `source("R/helpers.R")`.
 #' @param renvlock_path path to the renv.lock file (if any). Default is NULL.
 #' @param dependencies list of dependencies (if any). Default is NULL.
 #' @param system_deps character vector of Amazon Linux 2023 packages to

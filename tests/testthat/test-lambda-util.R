@@ -255,3 +255,37 @@ test_that("create_lambda_dockerfile rejects unsafe system package names", {
     )
   )
 })
+
+test_that("create_lambda_dockerfile copies support folders with their contents", {
+  src <- withr::local_tempdir()
+  dir.create(file.path(src, "R", "sub"), recursive = TRUE)
+  writeLines("helper <- 1", file.path(src, "R", "sub", "helper.R"))
+  writeLines("x <- 1", file.path(src, "extra.R"))
+
+  folder <- withr::local_tempfile()
+  create_lambda_dockerfile(
+    folder = folder,
+    runtime_function = "parity",
+    runtime_path = system.file("parity.R", package = "r2lambda"),
+    support_path = c(file.path(src, "R"), file.path(src, "extra.R"))
+  )
+
+  expect_true(file.exists(file.path(folder, "R", "sub", "helper.R")))
+  dockerfile <- readLines(file.path(folder, "Dockerfile"))
+  expect_true(all(c("COPY R R", "COPY extra.R extra.R") %in% dockerfile))
+  expect_equal(dockerfile[[length(dockerfile)]], 'CMD ["parity"]')
+})
+
+test_that("create_lambda_dockerfile rejects clashing support names", {
+  src <- withr::local_tempdir()
+  writeLines("x <- 1", file.path(src, "runtime.R"))
+  expect_error(
+    create_lambda_dockerfile(
+      folder = withr::local_tempfile(),
+      runtime_function = "parity",
+      runtime_path = system.file("parity.R", package = "r2lambda"),
+      support_path = file.path(src, "runtime.R")
+    ),
+    "distinct names"
+  )
+})

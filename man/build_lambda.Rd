@@ -23,7 +23,10 @@ build_lambda(
 
 \item{support_path}{path to the support files (if any). Either NULL
 (the default) if all needed code is in the same `runtime_path` script, or a
-character vector of paths to additional files needed by the runtime script.}
+character vector of paths to additional files or folders needed by the
+runtime script. Each is copied next to the runtime script under its own
+name, so `support_path = "R"` lets the runtime script
+`source("R/helpers.R")`.}
 
 \item{renvlock_path}{path to the renv.lock file (if any). Default is NULL.}
 
