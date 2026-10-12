@@ -8,12 +8,11 @@ Authors@R:
              role = c("aut", "cre"),
              email = "teofiln@gmail.com")
              )
-Description: The goal of `{r2lambda}` is to make it easier to go from an `R` script 
-    to a deployed AWS Lambda function. It does this by wrapping preexisting functionality
-    from the `{paws}` and `{lambdr}` packages.
+Description: Build, test and deploy R scripts as 'AWS Lambda' functions
+    packaged in 'Docker' container images. Wraps functionality from the
+    'paws' and 'lambdr' packages.
 License: GPL (>= 3)
 Encoding: UTF-8
-LazyData: true
 Imports: 
     checkmate,
     glue,
@@ -25,8 +24,6 @@ Imports:
     stevedore,
     sys,
     uuid
-Remotes: richfitz/stevedore
-RoxygenNote: 7.3.2
 Suggests: 
     covr,
     knitr,
@@ -34,4 +31,6 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://discindo.github.io/r2lambda/
+URL: https://discindo.github.io/r2lambda/, https://github.com/discindo/r2lambda
+BugReports: https://github.com/discindo/r2lambda/issues
+Config/roxygen2/version: 8.1.0
