@@ -281,13 +281,19 @@ fetch_ecr_repo <- function(tag) {
   logger::log_debug("[fetch_ecr_repo] Checking if repository already exists.")
   ecr_service <- aws_connect("ecr")
 
-  repos <- ecr_service$describe_repositories()$repositories
-  repos_names <- sapply(repos, "[[", "repositoryName")
+  repos <- tryCatch(
+    ecr_service$describe_repositories(repositoryNames = tag)$repositories,
+    error = function(e) {
+      if (!grepl("RepositoryNotFoundException", conditionMessage(e))) {
+        stop(e)
+      }
+      list()
+    }
+  )
 
-  if (tag %in% repos_names) {
+  if (length(repos) > 0) {
     logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
-    needed_repo <- repos_names == tag
-    repo_uri <- repos[needed_repo][[1]]$repositoryUri
+    repo_uri <- repos[[1]]$repositoryUri
   } else {
     logger::log_debug(
       "[fetch_ecr_repo] Creating new repository and fetching URI."

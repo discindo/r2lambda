@@ -27,8 +27,7 @@ build_lambda <- function(
   check_system_dependencies()
 
   logger::log_info("[build_lambda] Creating temporary working directory.")
-  tdir <- tempdir()
-  folder <- file.path(tdir, tag)
+  folder <- tempfile(pattern = paste0(tag, "-"))
 
   logger::log_info("[build_lambda] Creating Dockerfile.")
   tryCatch(
@@ -85,8 +84,7 @@ build_lambda <- function(
 #' @examples
 #' \dontrun{
 #'   payload <- list(number = 2)
-#'   tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
-#'   test_lambda(tag, payload)
+#'   test_lambda(tag = "parity1", payload)
 #' }
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
@@ -97,21 +95,20 @@ test_lambda <- function(tag, payload) {
   logger::log_info("[test_lambda] Starting docker client.")
   docker_cli <- stevedore::docker_client()
 
-  logger::log_info("[test_lambda] Fetching remote tag.")
-  repo_uri <- fetch_ecr_repo(tag)
-  repo_tag <- paste0(repo_uri, ":latest")
-
   logger::log_info("[test_lambda] Checking image tag exists.")
   images <- docker_cli$image$list()
   tags <- images[["repo_tags"]] |> unlist()
-  tag_exists <- repo_tag %in% tags
+  tags <- tags[!is.na(tags)]
+  # build_lambda tags the image with its ECR URI, <registry>/<tag>.
+  repo_tag <- tags[endsWith(tags, paste0("/", tag, ":latest"))]
 
-  if (!tag_exists) {
-    msg <- glue("[test_lambda] Image tagged {repo_tag} not found.")
+  if (length(repo_tag) == 0) {
+    msg <- glue("[test_lambda] No image tagged */{tag}:latest found.")
     logger::log_error(msg)
     message("Available images:\n", glue_collapse(sep = "\n", tags))
     rlang::abort(msg)
   }
+  repo_tag <- repo_tag[[1]]
 
   uid <- uuid::UUIDgenerate(1)
   logger::log_info("[test_lambda] Starting lambda container with name {uid}.")
@@ -121,9 +118,23 @@ test_lambda <- function(tag, payload) {
     detach = TRUE,
     name = uid
   )
+  on.exit(
+    {
+      logger::log_info("[test_lambda] Removing lambda container.")
+      docker_cli$container$remove(id = uid, force = TRUE)
+    },
+    add = TRUE
+  )
 
   logger::log_info("[test_lambda] Invoking local lambda instance.")
+  # The runtime interface emulator takes a moment to start listening.
   arg <- c(
+    "--silent",
+    "--retry",
+    "10",
+    "--retry-connrefused",
+    "--retry-delay",
+    "1",
     "-XPOST",
     "http://localhost:9000/2015-03-31/functions/function/invocations",
     "-d",
@@ -136,11 +147,6 @@ test_lambda <- function(tag, payload) {
   message("Response standard error:\n")
   response$stderr |> rawToChar() |> cat()
   cat("\n")
-
-  logger::log_info("[test_lambda] Stopping running lambda container.")
-  running_containers <- docker_cli$container$list()
-  to_stop <- running_containers$id[running_containers$name == uid]
-  docker_cli$container$remove(id = to_stop, force = TRUE)
 
   logger::log_success("[test_lambda] Done.")
   invisible(response)
@@ -352,25 +358,31 @@ invoke_lambda <-
 schedule_lambda <- function(lambda_function, execution_rate) {
   logger::log_info("[schedule_lambda] Validating inputs.")
   aws_lambda <- aws_connect("lambda")
-  fun_list <- aws_lambda$list_functions()
-  lambda_names <- sapply(fun_list$Functions, "[[", "FunctionName")
-
-  if (!lambda_function %in% lambda_names) {
-    msg <- glue(
-      "[schedule_lambda] Cannot find deployed lambda function {lambda_function}"
-    )
-    logger::log_error(msg)
-    rlang::abort(msg)
-  }
-
-  logger::log_info(
-    "[schedule_lambda] Found lambda function {lambda_function}. Fetching ARN."
+  lambda_function_arn <- tryCatch(
+    aws_lambda$get_function(
+      FunctionName = lambda_function
+    )$Configuration$FunctionArn,
+    error = function(e) {
+      msg <- glue(
+        "[schedule_lambda] Cannot find deployed lambda function {lambda_function}"
+      )
+      logger::log_error(msg)
+      rlang::abort(msg, parent = e)
+    }
   )
-  lambda_index <- which(lambda_function == lambda_names)
-  lambda_function_arn <- fun_list$Functions[[lambda_index]]$FunctionArn
+  logger::log_info(
+    "[schedule_lambda] Found lambda function {lambda_function}."
+  )
 
-  rate_clean <- gsub("\\(|\\)| |\\*|\\?", "_", execution_rate)
-  rule_name <- glue("schedule_rule_{rate_clean}_{lambda_function}")
+  # Rule names allow [.-_A-Za-z0-9] and 64 characters; permission statement
+  # IDs allow [-_A-Za-z0-9].
+  rate_clean <- gsub("[^A-Za-z0-9_-]", "_", execution_rate)
+  function_clean <- gsub("[^A-Za-z0-9_-]", "_", lambda_function)
+  rule_name <- substr(
+    glue("schedule_rule_{rate_clean}_{function_clean}"),
+    1,
+    64
+  )
   logger::log_info(
     "[schedule_lambda] Creating event schedule rule with name {rule_name}"
   )
@@ -388,7 +400,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
     }
   )
 
-  event_name <- glue("schedule_event_{rate_clean}_{lambda_function}")
+  event_name <- glue("schedule_event_{rate_clean}_{function_clean}")
   logger::log_info(
     "[schedule_lambda] Adding permission to execute lambda to event with name {event_name}" # nolint
   )

@@ -18,7 +18,6 @@ test a lambda locally
 \examples{
 \dontrun{
   payload <- list(number = 2)
-  tag <- "449283523352.dkr.ecr.us-east-1.amazonaws.com/myrepo51:latest"
-  test_lambda(tag, payload)
+  test_lambda(tag = "parity1", payload)
 }
 }
