@@ -289,3 +289,37 @@ test_that("create_lambda_dockerfile rejects clashing support names", {
     "distinct names"
   )
 })
+
+test_that("create_lambda_image builds for the requested architecture", {
+  folder <- withr::local_tempdir()
+  writeLines("FROM scratch", file.path(folder, "Dockerfile"))
+  writeLines("x <- 1", file.path(folder, "runtime.R"))
+  build_args <- NULL
+  local_mocked_bindings(
+    fetch_ecr_repo = function(tag) "reg/f",
+    docker = function(args, ...) {
+      build_args <<- args
+    }
+  )
+
+  create_lambda_image(folder, tag = "f", architecture = "arm64")
+  expect_equal(
+    build_args[[which(build_args == "--platform") + 1]],
+    "linux/arm64"
+  )
+
+  create_lambda_image(folder, tag = "f")
+  expect_equal(
+    build_args[[which(build_args == "--platform") + 1]],
+    "linux/amd64"
+  )
+
+  expect_error(create_lambda_image(folder, tag = "f", architecture = "386"))
+})
+
+test_that("build_lambda rejects unknown architectures", {
+  expect_error(
+    build_lambda("f", "parity", "parity.R", architecture = "386"),
+    "should be one of"
+  )
+})

@@ -59,6 +59,7 @@ test_that("invoke_lambda sends unboxed JSON and returns the response", {
 test_that("deploy_lambda reports the AWS error when function creation fails", {
   local_mocked_bindings(
     push_lambda_image = function(tag) "uri",
+    find_local_image = function(tag) "reg/f:latest",
     image_architecture = function(image) "arm64",
     create_lambda_exec_role = function(tag, policy_arns) {
       list(Role = list(Arn = "arn"))
@@ -122,6 +123,7 @@ test_that("deploy_lambda uses an existing role without creating one", {
   used_role <- NULL
   local_mocked_bindings(
     push_lambda_image = function(tag) "uri",
+    find_local_image = function(tag) "reg/f:latest",
     image_architecture = function(image) "arm64",
     create_lambda_exec_role = function(...) stop("should not create a role"),
     create_lambda_function = function(
@@ -150,6 +152,7 @@ test_that("deploy_lambda creates the function for the image architecture", {
   args <- NULL
   local_mocked_bindings(
     push_lambda_image = function(tag) "reg/f",
+    find_local_image = function(tag) "reg/f:latest",
     image_architecture = function(image) "arm64",
     aws_connect = function(service) {
       list(create_function = function(...) {
@@ -169,4 +172,20 @@ test_that("image_architecture maps Docker architectures to Lambda ones", {
   expect_equal(image_architecture("x"), "x86_64")
   local_mocked_bindings(docker = function(args, ...) "arm64")
   expect_equal(image_architecture("x"), "arm64")
+})
+
+test_that("deploy_lambda checks the image architecture before pushing", {
+  local_mocked_bindings(
+    find_local_image = function(tag) "reg/f:latest",
+    docker = function(args, ...) "386",
+    push_lambda_image = function(tag) stop("should not push")
+  )
+  expect_error(deploy_lambda("f"), "built for `386`")
+})
+
+test_that("deploy_lambda rejects Architectures in ...", {
+  expect_error(
+    deploy_lambda("f", Architectures = list("arm64")),
+    "set from the image"
+  )
 })

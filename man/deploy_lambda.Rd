@@ -21,7 +21,8 @@ When given, no role is created, and `policy_arns` can't be used. The role
 must trust `lambda.amazonaws.com`.}
 
 \item{...}{Arguments passed onto `paws::lambda()$create_function()`, for
-example `Timeout`, `MemorySize` or `Environment`.}
+example `Timeout`, `MemorySize` or `Environment`. `Architectures` is set
+from the image's architecture.}
 }
 \description{
 deploy a local lambda image to AWS Lambda
