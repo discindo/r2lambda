@@ -1,13 +1,10 @@
-if (FALSE) { # only in in interactive session
+test_that("aws_connect fails ok when bad service is requested", {
+  expect_error(aws_connect("lambd"))
+})
 
-  test_that("aws_connect fails ok when bad service is requested", {
-    expect_error(aws_connect("lambd"))
-  })
-
-  test_that("aws_connect works", {
-    checkmate::expect_list(aws_connect("lambda"))
-  })
-}
+test_that("aws_connect works", {
+  checkmate::expect_list(aws_connect("lambda"))
+})
 
 test_that("install_deps_line fails ok with incorrect input", {
   deps <- list("a")
@@ -209,7 +206,8 @@ test_that("create_lambda_image fails ok when inputs are incorrect", {
   file.create(file.path(folder, "Dockerfile"))
   write(
     x = "test that file is not empty",
-    file.path(folder, "Dockerfile"), append = TRUE
+    file.path(folder, "Dockerfile"),
+    append = TRUE
   )
   file.create(file.path(folder, "runtime.R"))
   expect_error(create_lambda_image(folder = folder, tag = tag))
@@ -222,7 +220,8 @@ test_that("create_lambda_image fails ok when inputs are incorrect", {
   file.create(file.path(folder, "runtime.R"))
   write(
     x = "test that file is not empty",
-    file.path(folder, "runtime.R"), append = TRUE
+    file.path(folder, "runtime.R"),
+    append = TRUE
   )
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
