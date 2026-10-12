@@ -413,7 +413,7 @@ find_local_image <- function(tag) {
     c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
     capture = TRUE
   )
-  image <- tags[endsWith(tags, paste0("/", tag, ":latest"))]
+  image <- unique(tags[endsWith(tags, paste0("/", tag, ":latest"))])
 
   if (length(image) == 0) {
     msg <- glue("[find_local_image] No image tagged */{tag}:latest found.")
@@ -421,7 +421,14 @@ find_local_image <- function(tag) {
     message("Available images:\n", glue_collapse(sep = "\n", tags))
     rlang::abort(msg)
   }
-  image[[1]]
+  if (length(image) > 1) {
+    msg <- glue(
+      "[find_local_image] Several images are tagged */{tag}:latest: {glue_collapse(image, sep = ', ')}. Remove the ones you don't need." # nolint
+    )
+    logger::log_error(msg)
+    rlang::abort(msg)
+  }
+  image
 }
 
 #' create_lambda_container
@@ -485,11 +492,12 @@ create_lambda_image <- function(folder, tag, architecture = "x86_64") {
 
 #' push_lambda_container to AWS ECR
 #'
-#' @param tag the tag of an existing local image
+#' @param repo_uri the ECR repository URI of an existing local image, as
+#' returned by `fetch_ecr_repo()`
 #' @noRd
-push_lambda_image <- function(tag) {
+push_lambda_image <- function(repo_uri) {
   logger::log_debug("[push_lambda_image] Validating inputs.")
-  checkmate::assert_character(tag)
+  checkmate::assert_string(repo_uri, min.chars = 1)
 
   logger::log_debug("[push_lambda_image] Authenticating Docker with AWS ECR.")
 
@@ -498,7 +506,6 @@ push_lambda_image <- function(tag) {
   ecr_password <- parse_password(
     ecr_token$authorizationData[[1]]$authorizationToken
   )
-  repo_uri <- fetch_ecr_repo(tag)
   server_address <- gsub(pattern = "/.*$", replacement = "", x = repo_uri)
 
   # Pass the password on standard input so it doesn't show in the process
