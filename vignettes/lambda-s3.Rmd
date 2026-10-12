@@ -192,38 +192,23 @@ Besides this, we also need to install `{paws}`, because without it we can't inte
 with S3. To do this, we just need to add `dependencies = c("tidytuesdayR", "paws")` 
 when building the image with `r2lambda::build_lambda`.
 
-2. 
-
-1. For the Lambda function to connect to S3, it needs access to some environmental 
-variables. The same ones as we have in our current interactive session without which
-we can't establish local clients of AWS services. These are: `REGION`, `PROFILE`,
-`SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. To include these envvars in the Lambda
-docker image on deploy, use the `set_aws_envvars` argument of `deploy_lambda`.
+2. The Lambda function needs permission to write to S3. Every Lambda runs under
+an IAM execution role, which `r2lambda::deploy_lambda` creates. Its `policy_arns`
+argument attaches extra IAM policies to that role. Inside the function, `paws`
+picks up the role's temporary credentials automatically, so no AWS keys go
+into the function.
 
 ## Build
 
 ```{r}
 r_code <- "
-  s3_connect <- function() {
-    paws::s3(config = list(
-      credentials = list(
-        creds = list(
-          access_key_id = Sys.getenv('ACCESS_KEY_ID'),
-          secret_access_key = Sys.getenv('SECRET_ACCESS_KEY')
-        ),
-        profile = Sys.getenv('PROFILE')
-      ),
-      region = Sys.getenv('REGION')
-    ))
-  }
-  
   tidytuesday_lambda_s3 <- function() {
     most_recent_tuesday <- tidytuesdayR::last_tuesday(date = Sys.Date())
     tt_data <- tidytuesdayR::tt_load(x = most_recent_tuesday)
     tt_data <- lapply(names(tt_data), function(x) tt_data[[x]])
     tt_data_raw <- serialize(tt_data, connection = NULL)
     
-    s3_service <- s3_connect()
+    s3_service <- paws::s3()
     s3_service$put_object(Body = tt_data_raw,
                           Bucket = 'tidytuesday-datasets',
                           Key = most_recent_tuesday)
@@ -252,13 +237,14 @@ r2lambda::build_lambda(
 ## Deploy
 
 We set a generous 2 minute timeout, just to be safe that the data set is successfully
-copied to S3. And we also increase the available memory to 1024 mb. Note also the 
-flag to pass along our local AWS envvars to the deployed lambda environment.
+copied to S3. And we also increase the available memory to 1024 mb. `policy_arns` gives the
+function access to S3. `AmazonS3FullAccess` keeps the example short; in practice,
+use a policy that only allows `s3:PutObject` on the one bucket.
 
 ```{r}
 r2lambda::deploy_lambda(
   tag = "tidytuesday_lambda_s3",
-  set_aws_envvars = TRUE,
+  policy_arns = "arn:aws:iam::aws:policy/AmazonS3FullAccess",
   Timeout = 120,
   MemorySize = 1024)
 ```
