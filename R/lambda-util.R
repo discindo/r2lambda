@@ -126,7 +126,7 @@ docker <- function(args, std_in = NULL, capture = FALSE) {
 #' @param runtime_function name of the runtime function
 #' @param runtime_path path to the script containing the runtime function
 #' @param support_path path to the supporting code (if any). Can be `NULL`
-#' (default) or a character vector of paths to scripts.
+#' (default) or a character vector of paths to files or folders.
 #' @param renvlock_path path to the renv.lock file (if any)
 #' @param dependencies list of dependencies (if any)
 #' @param system_deps character vector of Amazon Linux 2023 packages to
@@ -212,14 +212,26 @@ create_lambda_dockerfile <-
 
     if (!is.null(support_path)) {
       lapply(support_path, function(x) {
-        if (!checkmate::test_file_exists(x)) {
+        if (!file.exists(x)) {
           msg <- glue(
-            "[create_lambda_dockerfile] Can't access support script {x}."
+            "[create_lambda_dockerfile] Can't access support file or folder {x}."
           )
           logger::log_error(msg)
           rlang::abort(msg)
         }
       })
+
+      # Support files and folders land next to runtime.R under their own
+      # names, so the names must be distinct and not clash with ours.
+      support_names <- basename(normalizePath(support_path))
+      reserved <- c("runtime.R", "Dockerfile", "renv.lock")
+      if (anyDuplicated(support_names) || any(support_names %in% reserved)) {
+        msg <- glue(
+          "[create_lambda_dockerfile] Support files and folders need distinct names other than {glue_collapse(reserved, sep = ', ')}." # nolint
+        )
+        logger::log_error(msg)
+        rlang::abort(msg)
+      }
     }
 
     checkmate::assert_character(
@@ -280,7 +292,7 @@ create_lambda_dockerfile <-
 
     if (!is.null(support_path)) {
       lapply(support_path, function(x) {
-        file.copy(x, folder)
+        file.copy(x, folder, recursive = TRUE)
       })
     }
 
@@ -313,13 +325,9 @@ create_lambda_dockerfile <-
       write(renv_string, file = file.path(folder, "Dockerfile"), append = TRUE)
     }
 
-    runtime_string <- runtime_line(runtime_function)
-
-    write(runtime_string, file = file.path(folder, "Dockerfile"), append = TRUE)
-
     if (!is.null(support_path)) {
       lapply(support_path, function(x) {
-        support_string <- support_line(basename(x))
+        support_string <- support_line(basename(normalizePath(x)))
         write(
           support_string,
           file = file.path(folder, "Dockerfile"),
@@ -327,6 +335,10 @@ create_lambda_dockerfile <-
         )
       })
     }
+
+    runtime_string <- runtime_line(runtime_function)
+
+    write(runtime_string, file = file.path(folder, "Dockerfile"), append = TRUE)
 
     logger::log_debug("[create_lambda_dockerfile] Done.")
   }
