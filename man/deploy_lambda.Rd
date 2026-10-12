@@ -4,19 +4,20 @@
 \alias{deploy_lambda}
 \title{deploy a local lambda image to AWS Lambda}
 \usage{
-deploy_lambda(tag, set_aws_envvars = FALSE, ...)
+deploy_lambda(tag, policy_arns = NULL, ...)
 }
 \arguments{
 \item{tag}{The tag of an existing local image tagged with ECR repo
 (see `build_lambda`)}
 
-\item{set_aws_envvars}{logical, whether to set the local AWS secrets to the
-deployed Lambda environment (default = `FALSE`). This is useful if the
-Lambda needs to access other AWS service. When `TRUE`, the following
-envvars are set: `PROFILE`, `REGION`, `SECRET_ACCESS_KEY`, and
-`ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.}
+\item{policy_arns}{character vector of IAM policy ARNs to attach to the
+Lambda execution role, besides `AWSLambdaBasicExecutionRole`. Use it to let
+the function call other AWS services, for example
+`"arn:aws:iam::aws:policy/AmazonS3FullAccess"`. Inside the function, `paws`
+clients then pick up the role's temporary credentials automatically.}
 
-\item{...}{Arguments passed onto `create_lambda_function`}
+\item{...}{Arguments passed onto `paws::lambda()$create_function()`, for
+example `Timeout`, `MemorySize` or `Environment`.}
 }
 \description{
 deploy a local lambda image to AWS Lambda

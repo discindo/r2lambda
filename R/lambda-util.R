@@ -401,10 +401,13 @@ push_lambda_image <- function(tag) {
 
 #' create_lambda_exec_role
 #' @param tag the tag of an existing local image
+#' @param policy_arns ARNs of IAM policies to attach besides the basic
+#' execution policy
 #' @noRd
-create_lambda_exec_role <- function(tag) {
+create_lambda_exec_role <- function(tag, policy_arns = NULL) {
   logger::log_debug("[create_lambda_exec_role] Validating inputs.")
   checkmate::assert_character(tag)
+  checkmate::assert_character(policy_arns, min.chars = 1, null.ok = TRUE)
 
   logger::log_debug("[create_lambda_exec_role] Getting Lambda role json.")
   role <- system.file("lambda-role.json", package = "r2lambda")
@@ -418,13 +421,11 @@ create_lambda_exec_role <- function(tag) {
     AssumeRolePolicyDocument = role_string
   )
 
-  logger::log_debug(
-    "[create_lambda_exec_role] Attaching basic execution role policy."
-  )
-  iam_service$attach_role_policy(
-    RoleName = role_name,
-    PolicyArn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # nolint
-  )
+  basic_policy <- "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # nolint
+  for (policy_arn in unique(c(basic_policy, policy_arns))) {
+    logger::log_debug("[create_lambda_exec_role] Attaching {policy_arn}.")
+    iam_service$attach_role_policy(RoleName = role_name, PolicyArn = policy_arn)
+  }
 
   logger::log_debug("[create_lambda_exec_role] Done.")
   invisible(role_meta)
@@ -457,35 +458,15 @@ retry_until_role_ready <- function(f, tries = 10, wait = 3) {
 #' @param tag the tag of an existing local image
 #' @param ecr_image_uri the URI of the image to use
 #' @param lambda_role_arn the arn of the execution role created for this lambda
-#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
-#' deployed Lambda environment. This is useful if the Lambda needs to access
-#' other AWS service. When `TRUE`, the following envvars are set: `PROFILE`,
-#' `REGION`, `SECRET_ACCESS_KEY`, and `ACCESS_KEY_ID`. They are fetched using
-#' `Sys.getenv()`.
-#'
-#' @param ... arguments passed onto `paws.compute:::lambda_create_function()`.
-#' For example `Timeout` to increase the execution time, and `MemorySize`
-#' to request more memory.
+#' @param ... arguments passed onto `paws::lambda()$create_function()`.
+#' For example `Timeout` to increase the execution time, `MemorySize`
+#' to request more memory, and `Environment` to set environment variables.
 #'
 #' @noRd
 create_lambda_function <-
-  function(tag, ecr_image_uri, lambda_role_arn, set_aws_envvars = FALSE, ...) {
+  function(tag, ecr_image_uri, lambda_role_arn, ...) {
     logger::log_debug("[create_lambda_function] Validating inputs.")
     checkmate::assert_character(tag)
-
-    envvar_list <- list(Variables = list())
-
-    ## TODO: enable adding arbitrary envvars
-    if (isTRUE(set_aws_envvars)) {
-      envvar_list <- list(
-        Variables = list(
-          REGION = Sys.getenv("REGION"),
-          PROFILE = Sys.getenv("PROFILE"),
-          SECRET_ACCESS_KEY = Sys.getenv("SECRET_ACCESS_KEY"),
-          ACCESS_KEY_ID = Sys.getenv("ACCESS_KEY_ID")
-        )
-      )
-    }
 
     logger::log_debug("[create_lambda_function] Creating lambda function.")
     lambda_service <- aws_connect("lambda")
@@ -495,7 +476,6 @@ create_lambda_function <-
         Code = list(ImageUri = glue("{ecr_image_uri}:latest")),
         PackageType = "Image",
         Role = lambda_role_arn,
-        Environment = envvar_list,
         ...
       )
     }

@@ -59,7 +59,9 @@ test_that("invoke_lambda sends unboxed JSON and returns the response", {
 test_that("deploy_lambda reports the AWS error when function creation fails", {
   local_mocked_bindings(
     push_lambda_image = function(tag) "uri",
-    create_lambda_exec_role = function(tag) list(Role = list(Arn = "arn")),
+    create_lambda_exec_role = function(tag, policy_arns) {
+      list(Role = list(Arn = "arn"))
+    },
     create_lambda_function = function(...) stop("ResourceConflictException")
   )
   expect_error(deploy_lambda("f"), "ResourceConflictException")
@@ -87,4 +89,30 @@ test_that("retry_until_role_ready retries only while the role is not ready", {
 
   h <- function() stop("cannot be assumed")
   expect_error(retry_until_role_ready(h, tries = 2, wait = 0), "assumed")
+})
+
+test_that("create_lambda_exec_role attaches the basic and extra policies", {
+  attached <- character()
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(
+        create_role = function(RoleName, AssumeRolePolicyDocument) {
+          list(Role = list(Arn = "arn:role"))
+        },
+        attach_role_policy = function(RoleName, PolicyArn) {
+          attached <<- c(attached, PolicyArn)
+        }
+      )
+    }
+  )
+  s3 <- "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  create_lambda_exec_role("f", policy_arns = s3)
+  expect_equal(
+    attached,
+    c(
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+      s3
+    )
+  )
+  expect_error(create_lambda_exec_role("f", policy_arns = ""))
 })

@@ -157,12 +157,13 @@ test_lambda <- function(tag, payload) {
 #'
 #' @param tag The tag of an existing local image tagged with ECR repo
 #' (see `build_lambda`)
-#' @param set_aws_envvars logical, whether to set the local AWS secrets to the
-#' deployed Lambda environment (default = `FALSE`). This is useful if the
-#' Lambda needs to access other AWS service. When `TRUE`, the following
-#' envvars are set: `PROFILE`, `REGION`, `SECRET_ACCESS_KEY`, and
-#' `ACCESS_KEY_ID`. They are fetched using `Sys.getenv()`.
-#' @param ... Arguments passed onto `create_lambda_function`
+#' @param policy_arns character vector of IAM policy ARNs to attach to the
+#' Lambda execution role, besides `AWSLambdaBasicExecutionRole`. Use it to let
+#' the function call other AWS services, for example
+#' `"arn:aws:iam::aws:policy/AmazonS3FullAccess"`. Inside the function, `paws`
+#' clients then pick up the role's temporary credentials automatically.
+#' @param ... Arguments passed onto `paws::lambda()$create_function()`, for
+#' example `Timeout`, `MemorySize` or `Environment`.
 #'
 #' @examples
 #' \dontrun{
@@ -190,7 +191,7 @@ test_lambda <- function(tag, payload) {
 #' @importFrom paws ecr iam lambda s3 eventbridge
 #' @export
 deploy_lambda <-
-  function(tag, set_aws_envvars = FALSE, ...) {
+  function(tag, policy_arns = NULL, ...) {
     ## Inputs are validated by lower-level functions
 
     logger::log_info(
@@ -217,7 +218,7 @@ deploy_lambda <-
     logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")
     iam_lambda_role <- tryCatch(
       expr = {
-        create_lambda_exec_role(tag = tag)
+        create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
       },
       error = function(e) {
         msg <- "Failed to create Lambda execution role in AWS IAM."
@@ -240,7 +241,6 @@ deploy_lambda <-
           tag = tag,
           ecr_image_uri = ecr_image_uri,
           lambda_role_arn = iam_lambda_role$Role$Arn,
-          set_aws_envvars = set_aws_envvars,
           ...
         )
       },
