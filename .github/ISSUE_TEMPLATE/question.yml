@@ -1,0 +1,32 @@
+name: Question
+description: Ask a question about using the package.
+labels: ["question"]
+body:
+  - type: checkboxes
+    id: prework
+    attributes:
+      label: Prework
+      options:
+        - label: I have read and agree to the [code of conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html) and [contributing guidelines](https://github.com/discindo/r2lambda/blob/main/.github/CONTRIBUTING.md).
+          required: true
+        - label: I have checked for [an existing issue](https://github.com/discindo/r2lambda/issues?q=is%3Aissue), open or closed, and would otherwise comment there instead.
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reprex
+    attributes:
+      label: Reproducible example
+      description: |
+        If your question involves code, post a [minimal reproducible example](https://www.tidyverse.org/help/):
+        - **Runnable**: enough R code and data for anyone to run it on their own computer.
+        - **Minimal**: reduce runtime and remove details irrelevant to the question.
+        - **Readable**: format the code according to the [tidyverse style guide](https://style.tidyverse.org/).
+      render: r

@@ -1,0 +1,97 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+# Queue instead of cancel: a cancelled run could stop halfway through
+# pushing NEWS.md or CITATION.cff to the release PR branch.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@v7
+        if: ${{ steps.release.outputs.pr }}
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update NEWS.md from CHANGELOG.md
+        if: ${{ steps.release.outputs.pr }}
+        env:
+          PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          PR_BRANCH=$(echo "$PR_JSON" | jq -r '.headBranchName')
+          git fetch origin "$PR_BRANCH"
+          git checkout "$PR_BRANCH"
+
+          python3 - <<'EOF'
+          import re, sys
+          from pathlib import Path
+
+          pkg = Path("DESCRIPTION").read_text()
+          pkg = re.search(r"^Package:\s*(\S+)", pkg, re.MULTILINE).group(1)
+
+          changelog = Path("CHANGELOG.md").read_text()
+
+          # Extract the latest entry. The heading is "## [1.2.0](compare-url)",
+          # or "## 0.1.0 (date)" for a first release, which has nothing to
+          # compare with.
+          m = re.search(
+              r"^## \[?([^\]\s]+)\]?[^\n]*\n(.*?)(?=^## |\Z)",
+              changelog, re.MULTILINE | re.DOTALL
+          )
+          if not m:
+              sys.exit(0)
+
+          version, body = m.group(1), m.group(2).strip()
+
+          # ### Section  →  ## Section
+          body = re.sub(r"^### ", "## ", body, flags=re.MULTILINE)
+
+          new_entry = f"# {pkg} {version}\n\n{body}\n"
+
+          news = Path("NEWS.md")
+          existing = news.read_text() if news.exists() else ""
+
+          if f"# {pkg} {version}" in existing:
+              sys.exit(0)
+
+          news.write_text(new_entry + "\n" + existing)
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -f NEWS.md ]; then git add NEWS.md; fi
+          git diff --staged --quiet || \
+            git commit -m "style: update NEWS.md from CHANGELOG.md"
+          git push origin "$PR_BRANCH"
+
+      # release-please bumps the version in CITATION.cff (extra-files) but
+      # cannot set dates, so keep date-released at the day the PR was updated.
+      - name: Update date-released in CITATION.cff
+        if: ${{ steps.release.outputs.pr }}
+        env:
+          PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          PR_BRANCH=$(echo "$PR_JSON" | jq -r '.headBranchName')
+          sed -i "s/^date-released: .*/date-released: $(date -u +%F)/" CITATION.cff
+          git add CITATION.cff
+          git diff --staged --quiet || \
+            git commit -m "chore: update CITATION.cff date-released"
+          git push origin "$PR_BRANCH"

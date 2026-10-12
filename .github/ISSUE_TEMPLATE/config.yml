@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://discindo.github.io/r2lambda/
+    about: Function reference and vignettes.
