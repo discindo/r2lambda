@@ -226,3 +226,32 @@ test_that("create_lambda_image fails ok when inputs are incorrect", {
   expect_error(create_lambda_image(folder = folder, tag = tag))
   unlink(folder, recursive = TRUE)
 })
+
+test_that("create_lambda_dockerfile installs system packages before R packages", {
+  folder <- withr::local_tempfile()
+  create_lambda_dockerfile(
+    folder = folder,
+    runtime_function = "parity",
+    runtime_path = system.file("parity.R", package = "r2lambda"),
+    dependencies = "units",
+    system_deps = c("udunits2", "jq")
+  )
+  dockerfile <- readLines(file.path(folder, "Dockerfile"))
+  system_line <- which(
+    dockerfile == "RUN dnf -y install udunits2 jq && dnf clean all"
+  )
+  r_line <- grep("install.packages(c('units')", dockerfile, fixed = TRUE)
+  expect_length(system_line, 1)
+  expect_lt(system_line, r_line)
+})
+
+test_that("create_lambda_dockerfile rejects unsafe system package names", {
+  expect_error(
+    create_lambda_dockerfile(
+      folder = withr::local_tempfile(),
+      runtime_function = "parity",
+      runtime_path = system.file("parity.R", package = "r2lambda"),
+      system_deps = "jq; rm -rf /"
+    )
+  )
+})
