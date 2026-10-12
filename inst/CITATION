@@ -1,0 +1,32 @@
+# Built from DESCRIPTION: title, version and the authors with the "aut"
+# role, in the order they appear in Authors@R.
+authors <- Filter(
+  function(p) "aut" %in% p$role,
+  eval(parse(text = meta$`Authors@R`))
+)
+
+# CRAN adds Date/Publication. Without it (a GitHub install, or a package
+# not yet on CRAN) use the current year and the first URL in DESCRIPTION.
+on_cran <- !is.null(meta$`Date/Publication`)
+year <- if (on_cran) {
+  sub("-.*", "", meta$`Date/Publication`)
+} else {
+  format(Sys.Date(), "%Y")
+}
+cran_url <- paste0("https://CRAN.R-project.org/package=", meta$Package)
+url <- if (on_cran || is.null(meta$URL)) {
+  cran_url
+} else {
+  trimws(strsplit(meta$URL, ",")[[1]][[1]])
+}
+
+bibentry(
+  bibtype = "Manual",
+  title = paste0("{", meta$Package, "}: ", gsub("'", "", meta$Title)),
+  author = authors,
+  year = year,
+  note = paste("R package version", meta$Version),
+  url = url
+  # Once the package is on CRAN, add its DOI:
+  # doi = paste0("10.32614/CRAN.package.", meta$Package)
+)

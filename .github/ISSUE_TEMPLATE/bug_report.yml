@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in the package code, examples or documentation is wrong.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What goes wrong? Include the exact error or warning message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reprex
+    attributes:
+      label: Reproducible example
+      description: Minimal code that shows the problem, ideally made with `reprex::reprex()`.
+      render: r
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it show up?
+      multiple: true
+      options:
+        - Interactive use
+        - Package examples (including \donttest)
+        - Tests
+        - Vignettes
+        - R CMD check / CI
+        - CRAN checks
+
+  - type: textarea
+    id: cause
+    attributes:
+      label: Cause and proposed fix
+      description: Optional. Where the problem is in the code and how to fix it.
+
+  - type: textarea
+    id: session
+    attributes:
+      label: Session info
+      description: Output of `sessionInfo()` or `sessioninfo::session_info()`.
+      render: text
+    validations:
+      required: true

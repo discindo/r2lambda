@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "r2lambda: Deploy R Scripts as AWS Lambda Functions"
+abstract: >-
+  Build, test and deploy R scripts as 'AWS Lambda' functions packaged in
+  'Docker' container images. Wraps functionality from the 'paws' and
+  'lambdr' packages.
+authors:
+  - family-names: "Nakov"
+    given-names: "Teofil"
+    email: teofiln@gmail.com
+version: 0.1.0 # x-release-please-version
+date-released: 2026-10-12
+license: GPL-3.0-or-later
+url: "https://discindo.github.io/r2lambda/"
+repository-code: "https://github.com/discindo/r2lambda"
