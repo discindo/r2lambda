@@ -2,12 +2,12 @@ Package: r2lambda
 Type: Package
 Title: Deploy R Scripts as AWS Lambda Functions
 Version: 0.1.0
-Authors@R: 
- c(person(given = "Teofil",
-             family = "Nakov",
-             role = c("aut", "cre"),
-             email = "teofiln@gmail.com")
-             )
+Authors@R: c(
+    person("Teofil", "Nakov", , "teofiln@gmail.com", role = "aut",
+           comment = c(ORCID = "0009-0000-9589-5748")),
+    person("Novica", "Nakov", , "nnovica@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0005-7773-7718"))
+  )
 Description: Build, test and deploy R scripts as 'AWS Lambda' functions
     packaged in 'Docker' container images. Wraps functionality from the
     'paws' and 'lambdr' packages.

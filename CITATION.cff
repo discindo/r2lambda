@@ -10,6 +10,11 @@ authors:
   - family-names: "Nakov"
     given-names: "Teofil"
     email: teofiln@gmail.com
+    orcid: "https://orcid.org/0009-0000-9589-5748"
+  - family-names: "Nakov"
+    given-names: "Novica"
+    email: nnovica@gmail.com
+    orcid: "https://orcid.org/0009-0005-7773-7718"
 version: 0.1.0 # x-release-please-version
 date-released: 2026-10-12
 license: GPL-3.0-or-later
