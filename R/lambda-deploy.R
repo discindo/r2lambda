@@ -112,20 +112,7 @@ test_lambda <- function(tag, payload) {
   payload <- jsonlite::toJSON(payload, auto_unbox = TRUE)
 
   logger::log_info("[test_lambda] Checking image tag exists.")
-  tags <- docker(
-    c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE
-  )
-  # build_lambda tags the image with its ECR URI, <registry>/<tag>.
-  repo_tag <- tags[endsWith(tags, paste0("/", tag, ":latest"))]
-
-  if (length(repo_tag) == 0) {
-    msg <- glue("[test_lambda] No image tagged */{tag}:latest found.")
-    logger::log_error(msg)
-    message("Available images:\n", glue_collapse(sep = "\n", tags))
-    rlang::abort(msg)
-  }
-  repo_tag <- repo_tag[[1]]
+  repo_tag <- find_local_image(tag)
 
   uid <- uuid::UUIDgenerate(1)
   logger::log_info("[test_lambda] Starting lambda container with name {uid}.")
@@ -181,7 +168,8 @@ test_lambda <- function(tag, payload) {
 #' When given, no role is created, and `policy_arns` can't be used. The role
 #' must trust `lambda.amazonaws.com`.
 #' @param ... Arguments passed onto `paws::lambda()$create_function()`, for
-#' example `Timeout`, `MemorySize` or `Environment`.
+#' example `Timeout`, `MemorySize` or `Environment`. `Architectures` is set
+#' from the image's architecture.
 #'
 #' @examples
 #' \dontrun{
@@ -216,7 +204,16 @@ deploy_lambda <-
       logger::log_error(msg)
       rlang::abort(msg)
     }
+    if ("Architectures" %in% names(list(...))) {
+      msg <- "[deploy_lambda] `Architectures` is set from the image. Use `build_lambda(architecture = )` instead." # nolint
+      logger::log_error(msg)
+      rlang::abort(msg)
+    }
     ## Other inputs are validated by lower-level functions
+
+    # Check the image before uploading it, so an unsupported one fails early.
+    architecture <- image_architecture(find_local_image(tag))
+    logger::log_info("[deploy_lambda] Image architecture: {architecture}.")
 
     logger::log_info(
       "[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while."
@@ -238,9 +235,6 @@ deploy_lambda <-
     logger::log_warn(
       "[deploy_lambda] Use `paws::ecr()`, the AWS CLI, or the AWS console to manage your images." # nolint
     )
-
-    architecture <- image_architecture(paste0(ecr_image_uri, ":latest"))
-    logger::log_info("[deploy_lambda] Image architecture: {architecture}.")
 
     if (is.null(role_arn)) {
       logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")

@@ -391,7 +391,38 @@ image_architecture <- function(image) {
     c("image", "inspect", "--format", "{{.Architecture}}", image),
     capture = TRUE
   )
-  names(docker_platforms)[docker_platforms == paste0("linux/", arch)]
+  lambda_arch <- names(docker_platforms)[
+    docker_platforms == paste0("linux/", arch)
+  ]
+  if (length(lambda_arch) != 1) {
+    msg <- glue(
+      "[image_architecture] Image {image} is built for `{glue_collapse(arch, sep = ', ')}`, which Lambda doesn't support. Build it for x86_64 or arm64." # nolint
+    )
+    logger::log_error(msg)
+    rlang::abort(msg)
+  }
+  lambda_arch
+}
+
+#' Find the local image that build_lambda built for a tag
+#'
+#' build_lambda tags the image with its ECR URI, `<registry>/<tag>:latest`.
+#' @param tag the tag given to build_lambda
+#' @noRd
+find_local_image <- function(tag) {
+  tags <- docker(
+    c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
+    capture = TRUE
+  )
+  image <- tags[endsWith(tags, paste0("/", tag, ":latest"))]
+
+  if (length(image) == 0) {
+    msg <- glue("[find_local_image] No image tagged */{tag}:latest found.")
+    logger::log_error(msg)
+    message("Available images:\n", glue_collapse(sep = "\n", tags))
+    rlang::abort(msg)
+  }
+  image[[1]]
 }
 
 #' create_lambda_container
