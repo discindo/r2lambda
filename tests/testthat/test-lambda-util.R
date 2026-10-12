@@ -323,3 +323,52 @@ test_that("build_lambda rejects unknown architectures", {
     "should be one of"
   )
 })
+
+test_that("create_lambda_dockerfile names support files as they are copied", {
+  skip_on_os("windows")
+  src <- withr::local_tempdir()
+  writeLines("x <- 1", file.path(src, "common_helpers.R"))
+  file.symlink(file.path(src, "common_helpers.R"), file.path(src, "helpers.R"))
+
+  folder <- withr::local_tempfile()
+  create_lambda_dockerfile(
+    folder = folder,
+    runtime_function = "parity",
+    runtime_path = system.file("parity.R", package = "r2lambda"),
+    support_path = file.path(src, "helpers.R")
+  )
+  expect_true(file.exists(file.path(folder, "helpers.R")))
+  expect_true(
+    "COPY helpers.R helpers.R" %in% readLines(file.path(folder, "Dockerfile"))
+  )
+})
+
+test_that("create_lambda_dockerfile copies any lock file as renv.lock", {
+  src <- withr::local_tempdir()
+  writeLines("{}", file.path(src, "prod.lock"))
+
+  folder <- withr::local_tempfile()
+  create_lambda_dockerfile(
+    folder = folder,
+    runtime_function = "parity",
+    runtime_path = system.file("parity.R", package = "r2lambda"),
+    renvlock_path = file.path(src, "prod.lock")
+  )
+  expect_true(file.exists(file.path(folder, "renv.lock")))
+  expect_false(file.exists(file.path(folder, "prod.lock")))
+  expect_true(
+    "COPY renv.lock renv.lock" %in% readLines(file.path(folder, "Dockerfile"))
+  )
+})
+
+test_that("create_lambda_dockerfile rejects support paths without a name", {
+  expect_error(
+    create_lambda_dockerfile(
+      folder = withr::local_tempfile(),
+      runtime_function = "parity",
+      runtime_path = system.file("parity.R", package = "r2lambda"),
+      support_path = "."
+    ),
+    "distinct names"
+  )
+})

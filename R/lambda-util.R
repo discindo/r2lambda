@@ -221,14 +221,13 @@ create_lambda_dockerfile <-
         }
       })
 
-      # Support files and folders land next to runtime.R under their own
-      # names, so the names must be distinct and not clash with ours.
-      support_names <- basename(normalizePath(support_path))
-      reserved <- c("runtime.R", "Dockerfile", "renv.lock")
+      # Support files and folders land next to runtime.R under the names
+      # file.copy() gives them, so the names must be distinct and not clash
+      # with ours.
+      support_names <- basename(support_path)
+      reserved <- c("runtime.R", "Dockerfile", "renv.lock", "", ".", "..")
       if (anyDuplicated(support_names) || any(support_names %in% reserved)) {
-        msg <- glue(
-          "[create_lambda_dockerfile] Support files and folders need distinct names other than {glue_collapse(reserved, sep = ', ')}." # nolint
-        )
+        msg <- "[create_lambda_dockerfile] Support files and folders need distinct names other than runtime.R, Dockerfile and renv.lock." # nolint
         logger::log_error(msg)
         rlang::abort(msg)
       }
@@ -320,14 +319,14 @@ create_lambda_dockerfile <-
     }
 
     if (!is.null(renvlock_path)) {
-      file.copy(renvlock_path, folder)
-      renv_string <- renv_line(basename(renvlock_path))
+      file.copy(renvlock_path, file.path(folder, "renv.lock"))
+      renv_string <- renv_line("renv.lock")
       write(renv_string, file = file.path(folder, "Dockerfile"), append = TRUE)
     }
 
     if (!is.null(support_path)) {
       lapply(support_path, function(x) {
-        support_string <- support_line(basename(normalizePath(x)))
+        support_string <- support_line(basename(x))
         write(
           support_string,
           file = file.path(folder, "Dockerfile"),
