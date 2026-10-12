@@ -26,6 +26,7 @@ Imports:
 Suggests: 
     covr,
     knitr,
+    paws.common,
     rmarkdown,
     testthat (>= 3.0.0),
     withr
