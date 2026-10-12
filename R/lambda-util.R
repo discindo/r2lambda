@@ -45,7 +45,7 @@ install_deps_line <- function(deps) {
   checkmate::assert_character(deps)
 
   repo <- single_quote(
-    "https://packagemanager.rstudio.com/all/__linux__/centos7/latest"
+    "https://packagemanager.posit.co/cran/__linux__/rhel9/latest"
   )
   glued <- glue_collapse(single_quote(deps), sep = ", ")
   glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')

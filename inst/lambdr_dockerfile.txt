@@ -1,20 +1,23 @@
-FROM public.ecr.aws/lambda/provided
+FROM public.ecr.aws/lambda/provided:al2023
 
-ENV R_VERSION=4.2.2
+ENV R_VERSION=4.6.1
 
-RUN yum -y install wget git tar
-
-RUN yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
-  && wget https://cdn.rstudio.com/r/centos-7/pkgs/R-${R_VERSION}-1-1.x86_64.rpm \
-  && yum -y install R-${R_VERSION}-1-1.x86_64.rpm \
-  && rm R-${R_VERSION}-1-1.x86_64.rpm
+# Posit's R build for RHEL 9; Amazon Linux 2023 provides all its dependencies.
+# microdnf can't install an RPM from a file, so install the dependencies
+# first and then the RPM with rpm.
+RUN curl -fsSLO https://cdn.posit.co/r/rhel-9/pkgs/R-${R_VERSION}-1-1.x86_64.rpm \
+  && dnf -y --setopt=install_weak_deps=0 install \
+    $(rpm -qpR R-${R_VERSION}-1-1.x86_64.rpm | grep -v '^rpmlib' | awk '{print $1}') \
+    openssl-devel \
+  && rpm -i R-${R_VERSION}-1-1.x86_64.rpm \
+  && rm R-${R_VERSION}-1-1.x86_64.rpm \
+  && dnf clean all
 
 ENV PATH="${PATH}:/opt/R/${R_VERSION}/bin/"
+# Install binary packages, also when restoring an renv.lock.
+ENV RENV_CONFIG_REPOS_OVERRIDE="https://packagemanager.posit.co/cran/__linux__/rhel9/latest"
 
-# System requirements for R packages
-RUN yum -y install openssl-devel
-
-RUN R -e 'install.packages(c("remotes", "lambdr", "renv"), repos = "https://packagemanager.rstudio.com/all/__linux__/centos7/latest")'
+RUN Rscript -e 'install.packages(c("lambdr", "renv"), repos = "https://packagemanager.posit.co/cran/__linux__/rhel9/latest")'
 
 RUN printf '#!/bin/sh\ncd /lambda\nRscript runtime.R' > /var/runtime/bootstrap \
   && chmod +x /var/runtime/bootstrap
