@@ -4,7 +4,7 @@
 \alias{deploy_lambda}
 \title{deploy a local lambda image to AWS Lambda}
 \usage{
-deploy_lambda(tag, policy_arns = NULL, ...)
+deploy_lambda(tag, policy_arns = NULL, role_arn = NULL, ...)
 }
 \arguments{
 \item{tag}{The tag of an existing local image tagged with ECR repo
@@ -15,6 +15,10 @@ Lambda execution role, besides `AWSLambdaBasicExecutionRole`. Use it to let
 the function call other AWS services, for example
 `"arn:aws:iam::aws:policy/AmazonS3FullAccess"`. Inside the function, `paws`
 clients then pick up the role's temporary credentials automatically.}
+
+\item{role_arn}{ARN of an existing IAM role for the function to run as.
+When given, no role is created, and `policy_arns` can't be used. The role
+must trust `lambda.amazonaws.com`.}
 
 \item{...}{Arguments passed onto `paws::lambda()$create_function()`, for
 example `Timeout`, `MemorySize` or `Environment`.}
