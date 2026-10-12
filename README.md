@@ -4,8 +4,10 @@
 # r2lambda
 
 <!-- badges: start -->
+
 [![R-CMD-check](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yml/badge.svg?branch=main)](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yml)
-[![Codecov test coverage](https://codecov.io/gh/discindo/r2lambda/graph/badge.svg)](https://app.codecov.io/gh/discindo/r2lambda)
+[![Codecov test
+coverage](https://codecov.io/gh/discindo/r2lambda/graph/badge.svg)](https://app.codecov.io/gh/discindo/r2lambda)
 <!-- badges: end -->
 
 The goal of `{r2lambda}` is to make it easier to go from an `R` script
@@ -13,15 +15,18 @@ to a deployed `AWS Lambda` function.
 
 ## Requirements
 
-  - [docker](https://docs.docker.com/get-docker/) is required to build,
-    tag, and push the image.
+- [docker](https://docs.docker.com/get-docker/) is required to build,
+  tag, and push the image.
+- An AWS account. `build_lambda()` already creates the ECR repository
+  for the image, and `deploy_lambda()` creates an IAM role and the
+  Lambda function.
 
 ## Installation
 
 You can install the development version of `{r2lambda}` like so:
 
 ``` r
-# install_packages("remotes")
+# install.packages("remotes")
 remotes::install_github("discindo/r2lambda")
 ```
 
@@ -61,6 +66,19 @@ build_lambda(
 )
 ```
 
+`build_lambda()` has a few more options:
+
+- `support_path`: files or folders the runtime script needs. Each is
+  copied next to the runtime script under its own name, so
+  `support_path = "R"` lets the script call `source("R/helpers.R")`.
+- `system_deps`: Amazon Linux 2023 packages to install with `dnf`, for R
+  packages that need system libraries, e.g. `system_deps = "udunits2"`
+  for `units`. Amazon Linux 2023 has no EPEL, so some libraries, such as
+  GDAL, are not available.
+- `architecture`: `"x86_64"` (default) or `"arm64"`. `deploy_lambda()`
+  creates the function with the image’s architecture. Building for an
+  architecture other than your machine’s needs Docker’s QEMU emulation.
+
 ### Test the lambda docker image locally
 
 ``` r
@@ -75,6 +93,22 @@ test_lambda(tag = "parity1", payload)
 # Might take a while, its pushing it to a remote repository
 deploy_lambda(tag = "parity1")
 ```
+
+The function runs under a new IAM role with basic execution permissions.
+To let it call other AWS services, attach policies to that role, or use
+a role you already have:
+
+``` r
+deploy_lambda(
+  tag = "parity1",
+  policy_arns = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+)
+
+deploy_lambda(tag = "parity1", role_arn = "arn:aws:iam::123456789012:role/my-role")
+```
+
+Inside the function, `paws` picks up the role’s temporary credentials,
+so no AWS keys go into the image or the function’s settings.
 
 ### Invoke deployed lambda
 
