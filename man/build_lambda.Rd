@@ -20,8 +20,8 @@ build_lambda(
 
 \item{runtime_path}{path to the script containing the runtime function}
 
-\item{support_path}{path to the support files (if any). Either NULL 
-(the default) if all needed code is in the same `runtime_path` script, or a 
+\item{support_path}{path to the support files (if any). Either NULL
+(the default) if all needed code is in the same `runtime_path` script, or a
 character vector of paths to additional files needed by the runtime script.}
 
 \item{renvlock_path}{path to the renv.lock file (if any). Default is NULL.}

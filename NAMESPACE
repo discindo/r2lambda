@@ -6,12 +6,16 @@ export(deploy_lambda)
 export(invoke_lambda)
 export(schedule_lambda)
 export(test_lambda)
-importFrom(glue,double_quote)
-importFrom(glue,glue)
-importFrom(glue,glue_collapse)
-importFrom(glue,single_quote)
-importFrom(paws,ecr)
-importFrom(paws,eventbridge)
-importFrom(paws,iam)
-importFrom(paws,lambda)
-importFrom(paws,s3)
+importFrom(glue,
+  double_quote,
+  glue,
+  glue_collapse,
+  single_quote
+)
+importFrom(paws,
+  ecr,
+  eventbridge,
+  iam,
+  lambda,
+  s3
+)

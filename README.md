@@ -4,10 +4,8 @@
 # r2lambda
 
 <!-- badges: start -->
-
-[![R-CMD-check](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yaml)
-[![Codecov test
-coverage](https://codecov.io/gh/discindo/r2lambda/branch/main/graph/badge.svg)](https://app.codecov.io/gh/discindo/r2lambda?branch=main)
+[![R-CMD-check](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yml/badge.svg?branch=main)](https://github.com/discindo/r2lambda/actions/workflows/R-CMD-check.yml)
+[![Codecov test coverage](https://codecov.io/gh/discindo/r2lambda/graph/badge.svg)](https://app.codecov.io/gh/discindo/r2lambda)
 <!-- badges: end -->
 
 The goal of `{r2lambda}` is to make it easier to go from an `R` script
@@ -31,7 +29,7 @@ remotes::install_github("discindo/r2lambda")
 
 `r2lambda` assumes credentials for connecting to AWS services are
 available in the `R` session. This can be done via an `.Renviron` file
-that should set enironmental variables like so:
+that should set environmental variables like so:
 
     AWS_ACCESS_KEY_ID = "YOUR AWS ACCESS KEY ID"
     AWS_SECRET_ACCESS_KEY = "YOUR AWS SECRET ACCESS KEY"
