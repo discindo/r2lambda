@@ -96,7 +96,7 @@ s3_service$delete_bucket(Bucket = "a-unique-bucket")
 OK. With that, we now know the two steps our Lambda function would need to do:
 
   1. fetch the most recent Tidytuesday data set (see 
-  [this post](https://discindo.org/post/an-r-aws-lambda-function-to-download-tidytuesday-datasets/) for details)
+  [this post](https://discindo.org/posts/r2lambda/2023-02-24-an-r-aws-lambda-function-to-download-tidytuesday-datasets/) for details)
   2. put the data set as an object in the S3 bucket
   
 Still in an interactive session, lets just write the code that our Lambda would have
@@ -187,7 +187,7 @@ considerations here:
 
 1. We have some dependencies that would need to be available in the docker image. 
 We already saw how to install `{tidytuesdayR}` in our Lambda docker image in a 
-[previous post](https://discindo.org/post/an-r-aws-lambda-function-to-download-tidytuesday-datasets/).
+[previous post](https://discindo.org/posts/r2lambda/2023-02-24-an-r-aws-lambda-function-to-download-tidytuesday-datasets/).
 Besides this, we also need to install `{paws}`, because without it we can't interact
 with S3. To do this, we just need to add `dependencies = c("tidytuesdayR", "paws")` 
 when building the image with `r2lambda::build_lambda`.
