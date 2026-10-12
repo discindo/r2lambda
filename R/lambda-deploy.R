@@ -227,11 +227,6 @@ deploy_lambda <-
       "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint
     )
 
-    ## TODO check if the role is OK before starting to create the lambda
-    ## As is, we are waiting ten seconds before creating the lambda
-    ## but this could be too long in some cases or not long enough in other
-    Sys.sleep(10)
-
     logger::log_info("[deploy_lambda] Creating Lambda function from image.")
     lambda <- tryCatch(
       expr = {
@@ -244,9 +239,9 @@ deploy_lambda <-
         )
       },
       error = function(e) {
-        msg <- "Failed to push Lambda Docker image to AWS ECR."
+        msg <- "Failed to create Lambda function."
         logger::log_error(msg)
-        rlang::abort(msg)
+        rlang::abort(e$message)
       }
     )
     logger::log_warn(
@@ -307,34 +302,30 @@ invoke_lambda <-
     ## TODO: Should we also check `LastUpdateStatus`
     ## (https://docs.aws.amazon.com/lambda/latest/dg/functions-states.html)
 
-    if (state == "Active" || state == "Inactive") {
-      # if its inactive, ping it still, to activate it
-      # it might fail to run, but the error message should clarify next steps
-      logger::log_info("[invoke_lambda] Function state: {state}.")
-      logger::log_info("[invoke_lambda] Invoking function.")
-      response <- tryCatch(
-        lambda_service$invoke(
-          FunctionName = function_name,
-          InvocationType = invocation_type,
-          Payload = jsonlite::toJSON(payload),
-          LogType = ifelse(include_logs, "Tail", "None")
-        ),
-        error = function(e) e$message
+    # An inactive function is invoked anyway: the call reactivates it, and if
+    # it fails, the AWS error message says what to do next.
+    if (!state %in% c("Active", "Inactive")) {
+      msg <- glue(
+        "[invoke_lambda] Can't invoke the function in state `{state}`. Try again if the state is `Pending`." # nolint
       )
-    } else {
-      logger::log_info(
-        "[invoke_lambda] Failed to invoke the function due to {state} state."
-      )
-      logger::log_info(
-        "[invoke_lambda] Please try again if the reported state was `Pending`."
-      )
+      logger::log_error(msg)
+      rlang::abort(msg)
     }
+
+    logger::log_info("[invoke_lambda] Function state: {state}.")
+    logger::log_info("[invoke_lambda] Invoking function.")
+    response <- lambda_service$invoke(
+      FunctionName = function_name,
+      InvocationType = invocation_type,
+      Payload = jsonlite::toJSON(payload, auto_unbox = TRUE),
+      LogType = if (include_logs) "Tail" else "None"
+    )
 
     message("\nLambda response payload: ")
     response$Payload |> rawToChar() |> cat()
     cat("\n")
 
-    if (include_logs) {
+    if (include_logs && length(response$LogResult) > 0) {
       message("\nLambda logs: ")
       jsonlite::base64_dec(response$LogResult) |> rawToChar() |> cat()
     }
