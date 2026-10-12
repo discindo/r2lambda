@@ -212,8 +212,9 @@ deploy_lambda <-
     ## Other inputs are validated by lower-level functions
 
     # Check the image that will be pushed before uploading it, so an
-    # unsupported one fails early.
-    ecr_image_uri <- fetch_ecr_repo(tag)
+    # unsupported one fails early. build_lambda created the repository, so a
+    # missing one means the tag was never built.
+    ecr_image_uri <- fetch_ecr_repo(tag, create = FALSE)
     architecture <- image_architecture(paste0(ecr_image_uri, ":latest"))
     logger::log_info("[deploy_lambda] Image architecture: {architecture}.")
 
