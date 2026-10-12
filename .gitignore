@@ -61,3 +61,7 @@ inst/doc
 /doc/
 /Meta/
 docs
+# roborev snapshots
+/.roborev/
+# testthat failure snapshots
+tests/testthat/_problems/
