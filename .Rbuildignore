@@ -19,3 +19,5 @@
 ^CITATION\.cff$
 ^cran-comments\.md$
 ^CRAN-SUBMISSION$
+^\.roborev$
+^tests/testthat/_problems$
