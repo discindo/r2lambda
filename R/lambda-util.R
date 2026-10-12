@@ -424,14 +424,26 @@ create_lambda_exec_role <- function(tag) {
   invisible(role_meta)
 }
 
-#' delete_lambda_exec_role
+#' Retry a call while a new IAM role is not yet usable by Lambda
+#'
+#' IAM changes take a few seconds to propagate. Until then, Lambda rejects the
+#' role with "cannot be assumed".
+#' @param f function to call
+#' @param tries number of attempts
+#' @param wait seconds between attempts
 #' @noRd
-delete_lambda_exec_role <- function(tag) {
-  ## TODO: this probably won't work as there is a policy attached to the role
-  iam_service <- aws_connect("iam")
-  iam_service$delete_role(
-    RoleName = tag
-  )
+retry_until_role_ready <- function(f, tries = 10, wait = 3) {
+  for (i in seq_len(tries)) {
+    result <- tryCatch(f(), error = function(e) e)
+    if (!inherits(result, "error")) {
+      return(result)
+    }
+    if (i == tries || !grepl("cannot be assumed", conditionMessage(result))) {
+      stop(result)
+    }
+    logger::log_debug("[retry_until_role_ready] Role not ready. Retrying.")
+    Sys.sleep(wait)
+  }
 }
 
 #' create_lambda_function
@@ -471,27 +483,21 @@ create_lambda_function <-
 
     logger::log_debug("[create_lambda_function] Creating lambda function.")
     lambda_service <- aws_connect("lambda")
-    lambda <- lambda_service$create_function(
-      FunctionName = tag,
-      Code = list(ImageUri = glue("{ecr_image_uri}:latest")),
-      PackageType = "Image",
-      Role = lambda_role_arn,
-      Environment = envvar_list,
-      ...
-    )
+    create <- function() {
+      lambda_service$create_function(
+        FunctionName = tag,
+        Code = list(ImageUri = glue("{ecr_image_uri}:latest")),
+        PackageType = "Image",
+        Role = lambda_role_arn,
+        Environment = envvar_list,
+        ...
+      )
+    }
+    lambda <- retry_until_role_ready(create)
 
     logger::log_debug("[create_lambda_function] Done.")
     invisible(lambda)
   }
-
-#' delete_lambda_function
-#' @noRd
-delete_lambda_function <- function(tag) {
-  lambda_service <- aws_connect("lambda")
-  lambda_service$delete_function(
-    FunctionName = tag
-  )
-}
 
 #' Create a rule for event schedule
 #'
