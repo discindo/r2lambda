@@ -116,3 +116,30 @@ test_that("create_lambda_exec_role attaches the basic and extra policies", {
   )
   expect_error(create_lambda_exec_role("f", policy_arns = ""))
 })
+
+test_that("deploy_lambda uses an existing role without creating one", {
+  used_role <- NULL
+  local_mocked_bindings(
+    push_lambda_image = function(tag) "uri",
+    create_lambda_exec_role = function(...) stop("should not create a role"),
+    create_lambda_function = function(
+      tag,
+      ecr_image_uri,
+      lambda_role_arn,
+      ...
+    ) {
+      used_role <<- lambda_role_arn
+      list(FunctionArn = "arn:fn")
+    }
+  )
+  result <- deploy_lambda("f", role_arn = "arn:aws:iam::1:role/existing")
+  expect_equal(used_role, "arn:aws:iam::1:role/existing")
+  expect_equal(result$IAM_lambda_role_arn, "arn:aws:iam::1:role/existing")
+})
+
+test_that("deploy_lambda rejects role_arn together with policy_arns", {
+  expect_error(
+    deploy_lambda("f", policy_arns = "arn:p", role_arn = "arn:r"),
+    "not both"
+  )
+})

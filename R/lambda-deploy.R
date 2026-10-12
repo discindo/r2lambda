@@ -162,6 +162,9 @@ test_lambda <- function(tag, payload) {
 #' the function call other AWS services, for example
 #' `"arn:aws:iam::aws:policy/AmazonS3FullAccess"`. Inside the function, `paws`
 #' clients then pick up the role's temporary credentials automatically.
+#' @param role_arn ARN of an existing IAM role for the function to run as.
+#' When given, no role is created, and `policy_arns` can't be used. The role
+#' must trust `lambda.amazonaws.com`.
 #' @param ... Arguments passed onto `paws::lambda()$create_function()`, for
 #' example `Timeout`, `MemorySize` or `Environment`.
 #'
@@ -191,8 +194,14 @@ test_lambda <- function(tag, payload) {
 #' @importFrom paws ecr iam lambda s3 eventbridge
 #' @export
 deploy_lambda <-
-  function(tag, policy_arns = NULL, ...) {
-    ## Inputs are validated by lower-level functions
+  function(tag, policy_arns = NULL, role_arn = NULL, ...) {
+    checkmate::assert_string(role_arn, min.chars = 1, null.ok = TRUE)
+    if (!is.null(role_arn) && !is.null(policy_arns)) {
+      msg <- "[deploy_lambda] Use either `role_arn` or `policy_arns`, not both. Attach policies to the existing role instead." # nolint
+      logger::log_error(msg)
+      rlang::abort(msg)
+    }
+    ## Other inputs are validated by lower-level functions
 
     logger::log_info(
       "[deploy_lambda] Pushing Docker image to AWS ECR. This may take a while."
@@ -215,24 +224,29 @@ deploy_lambda <-
       "[deploy_lambda] Use `paws::ecr()`, the AWS CLI, or the AWS console to manage your images." # nolint
     )
 
-    logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")
-    iam_lambda_role <- tryCatch(
-      expr = {
-        create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
-      },
-      error = function(e) {
-        msg <- "Failed to create Lambda execution role in AWS IAM."
-        logger::log_error(msg)
-        rlang::abort(e$message)
-      }
-    )
+    if (is.null(role_arn)) {
+      logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")
+      iam_lambda_role <- tryCatch(
+        expr = {
+          create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
+        },
+        error = function(e) {
+          msg <- "Failed to create Lambda execution role in AWS IAM."
+          logger::log_error(msg)
+          rlang::abort(e$message)
+        }
+      )
+      role_arn <- iam_lambda_role$Role$Arn
 
-    logger::log_warn(
-      "[deploy_lambda] Created AWS role with basic lambda execution permissions." # nolint
-    )
-    logger::log_warn(
-      "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint
-    )
+      logger::log_warn(
+        "[deploy_lambda] Created AWS role with basic lambda execution permissions." # nolint
+      )
+      logger::log_warn(
+        "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint
+      )
+    } else {
+      logger::log_info("[deploy_lambda] Using existing role {role_arn}.")
+    }
 
     logger::log_info("[deploy_lambda] Creating Lambda function from image.")
     lambda <- tryCatch(
@@ -240,7 +254,7 @@ deploy_lambda <-
         create_lambda_function(
           tag = tag,
           ecr_image_uri = ecr_image_uri,
-          lambda_role_arn = iam_lambda_role$Role$Arn,
+          lambda_role_arn = role_arn,
           ...
         )
       },
@@ -262,7 +276,7 @@ deploy_lambda <-
       "[deploy_lambda] Pushed docker image to ECR with URI `{ecr_image_uri}`"
     )
     logger::log_warn(
-      "[deploy_lambda] Created Lambda execution role with ARN `{iam_lambda_role$Role$Arn}`" # nolint
+      "[deploy_lambda] Lambda execution role ARN `{role_arn}`"
     )
     logger::log_warn(
       "[deploy_lambda] Created Lambda function `{lambda$FunctionName}` with ARN `{lambda$FunctionArn}`" # nolint
@@ -273,7 +287,7 @@ deploy_lambda <-
     invisible(
       list(
         ECR_image_uri = ecr_image_uri,
-        IAM_lambda_role_arn = iam_lambda_role$Role$Arn,
+        IAM_lambda_role_arn = role_arn,
         Lambda_function_arn = lambda$FunctionArn
       )
     )
