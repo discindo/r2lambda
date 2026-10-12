@@ -1,0 +1,10 @@
+{
+  "R": {
+    "Version": "4.6.1",
+    "Repositories": [{"Name": "CRAN", "URL": "https://cloud.r-project.org"}]
+  },
+  "Packages": {
+    "glue": {"Package": "glue", "Version": "1.6.2", "Source": "Repository", "Repository": "CRAN"},
+    "jsonlite": {"Package": "jsonlite", "Version": "1.8.8", "Source": "Repository", "Repository": "CRAN"}
+  }
+}
