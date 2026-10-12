@@ -11,7 +11,8 @@ build_lambda(
   support_path = NULL,
   renvlock_path = NULL,
   dependencies = NULL,
-  system_deps = NULL
+  system_deps = NULL,
+  architecture = c("x86_64", "arm64")
 )
 }
 \arguments{
@@ -36,6 +37,11 @@ name, so `support_path = "R"` lets the runtime script
 install with `dnf` before the R packages, for R packages that need system
 libraries, e.g. `"udunits2"` for `units`. Amazon Linux 2023 has no EPEL, so
 some libraries, such as GDAL, are not available. Default is NULL.}
+
+\item{architecture}{CPU architecture of the Lambda function, `"x86_64"`
+(default) or `"arm64"`. `deploy_lambda` reads it from the image. Building
+an arm64 image on an x86_64 machine, or the reverse, needs Docker's QEMU
+emulation.}
 }
 \description{
 build and tag lambda image locally

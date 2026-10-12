@@ -378,17 +378,35 @@ fetch_ecr_repo <- function(tag) {
   return(repo_uri)
 }
 
+#' Docker platforms for the Lambda architectures
+#' @noRd
+docker_platforms <- c(x86_64 = "linux/amd64", arm64 = "linux/arm64")
+
+#' Lambda architecture of a local image
+#'
+#' @param image name of a local image
+#' @noRd
+image_architecture <- function(image) {
+  arch <- docker(
+    c("image", "inspect", "--format", "{{.Architecture}}", image),
+    capture = TRUE
+  )
+  names(docker_platforms)[docker_platforms == paste0("linux/", arch)]
+}
+
 #' create_lambda_container
 #'
 #' @param folder path to the folder containing the lambda runtime
 #' script and Dockerfile
 #' @param tag a tag for the image
+#' @param architecture `"x86_64"` or `"arm64"`
 #' @noRd
-create_lambda_image <- function(folder, tag) {
+create_lambda_image <- function(folder, tag, architecture = "x86_64") {
   logger::log_debug("[create_lambda_image] Validating inputs.")
   checkmate::assert_character(tag)
   checkmate::assert_character(folder)
   checkmate::assert_directory_exists(folder)
+  checkmate::assert_choice(architecture, names(docker_platforms))
 
   checkmate::assert_file_exists(file.path(folder, "Dockerfile"))
   checkmate::assert_file_exists(file.path(folder, "runtime.R"))
@@ -419,12 +437,13 @@ create_lambda_image <- function(folder, tag) {
 
   logger::log_debug("[create_lambda_image] Building docker image.")
 
-  # Lambda runs x86_64 by default and rejects multi-platform image indexes,
-  # which buildx creates when it adds provenance attestations.
+  # Build for the Lambda architecture, not the local machine's. Lambda
+  # rejects multi-platform image indexes, which buildx creates when it adds
+  # provenance attestations.
   docker(c(
     "build",
     "--platform",
-    "linux/amd64",
+    docker_platforms[[architecture]],
     "--provenance=false",
     "--tag",
     repo_uri,
@@ -530,13 +549,20 @@ retry_until_role_ready <- function(f, tries = 10, wait = 3) {
 #' @param tag the tag of an existing local image
 #' @param ecr_image_uri the URI of the image to use
 #' @param lambda_role_arn the arn of the execution role created for this lambda
+#' @param architecture `"x86_64"` or `"arm64"`, matching the image
 #' @param ... arguments passed onto `paws::lambda()$create_function()`.
 #' For example `Timeout` to increase the execution time, `MemorySize`
 #' to request more memory, and `Environment` to set environment variables.
 #'
 #' @noRd
 create_lambda_function <-
-  function(tag, ecr_image_uri, lambda_role_arn, ...) {
+  function(
+    tag,
+    ecr_image_uri,
+    lambda_role_arn,
+    architecture = "x86_64",
+    ...
+  ) {
     logger::log_debug("[create_lambda_function] Validating inputs.")
     checkmate::assert_character(tag)
 
@@ -548,6 +574,7 @@ create_lambda_function <-
         Code = list(ImageUri = glue("{ecr_image_uri}:latest")),
         PackageType = "Image",
         Role = lambda_role_arn,
+        Architectures = list(architecture),
         ...
       )
     }

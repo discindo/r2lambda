@@ -11,6 +11,10 @@
 #' `source("R/helpers.R")`.
 #' @param renvlock_path path to the renv.lock file (if any). Default is NULL.
 #' @param dependencies list of dependencies (if any). Default is NULL.
+#' @param architecture CPU architecture of the Lambda function, `"x86_64"`
+#' (default) or `"arm64"`. `deploy_lambda` reads it from the image. Building
+#' an arm64 image on an x86_64 machine, or the reverse, needs Docker's QEMU
+#' emulation.
 #' @param system_deps character vector of Amazon Linux 2023 packages to
 #' install with `dnf` before the R packages, for R packages that need system
 #' libraries, e.g. `"udunits2"` for `units`. Amazon Linux 2023 has no EPEL, so
@@ -29,8 +33,10 @@ build_lambda <- function(
   support_path = NULL,
   renvlock_path = NULL,
   dependencies = NULL,
-  system_deps = NULL
+  system_deps = NULL,
+  architecture = c("x86_64", "arm64")
 ) {
+  architecture <- match.arg(architecture)
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
 
@@ -63,7 +69,11 @@ build_lambda <- function(
   logger::log_info("[build_lambda] Building Docker image.")
   tryCatch(
     expr = {
-      create_lambda_image(folder = folder, tag = tag)
+      create_lambda_image(
+        folder = folder,
+        tag = tag,
+        architecture = architecture
+      )
     },
     error = function(e) {
       msg <- "Failed to create Lambda Docker image."
@@ -229,6 +239,9 @@ deploy_lambda <-
       "[deploy_lambda] Use `paws::ecr()`, the AWS CLI, or the AWS console to manage your images." # nolint
     )
 
+    architecture <- image_architecture(paste0(ecr_image_uri, ":latest"))
+    logger::log_info("[deploy_lambda] Image architecture: {architecture}.")
+
     if (is.null(role_arn)) {
       logger::log_info("[deploy_lambda] Creating Lambda role and basic policy.")
       iam_lambda_role <- tryCatch(
@@ -260,6 +273,7 @@ deploy_lambda <-
           tag = tag,
           ecr_image_uri = ecr_image_uri,
           lambda_role_arn = role_arn,
+          architecture = architecture,
           ...
         )
       },

@@ -4,13 +4,14 @@ ENV R_VERSION=4.6.1
 
 # Posit's R build for RHEL 9; Amazon Linux 2023 provides all its dependencies.
 # microdnf can't install an RPM from a file, so install the dependencies
-# first and then the RPM with rpm.
-RUN curl -fsSLO https://cdn.posit.co/r/rhel-9/pkgs/R-${R_VERSION}-1-1.x86_64.rpm \
+# first and then the RPM with rpm. uname -m picks x86_64 or aarch64.
+RUN rpm_file=R-${R_VERSION}-1-1.$(uname -m).rpm \
+  && curl -fsSLO https://cdn.posit.co/r/rhel-9/pkgs/${rpm_file} \
   && dnf -y --setopt=install_weak_deps=0 install \
-    $(rpm -qpR R-${R_VERSION}-1-1.x86_64.rpm | grep -v '^rpmlib' | awk '{print $1}') \
+    $(rpm -qpR ${rpm_file} | grep -v '^rpmlib' | awk '{print $1}') \
     openssl-devel \
-  && rpm -i R-${R_VERSION}-1-1.x86_64.rpm \
-  && rm R-${R_VERSION}-1-1.x86_64.rpm \
+  && rpm -i ${rpm_file} \
+  && rm ${rpm_file} \
   && dnf clean all
 
 ENV PATH="${PATH}:/opt/R/${R_VERSION}/bin/"
