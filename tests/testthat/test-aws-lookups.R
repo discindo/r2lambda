@@ -85,23 +85,14 @@ test_that("schedule_lambda builds valid rule and statement names", {
 })
 
 test_that("test_lambda finds the image by tag and removes the container", {
-  removed <- NULL
-  fake_docker <- list(
-    image = list(
-      list = function() {
-        data.frame(repo_tags = I(list("reg.example/parity:latest", NA)))
-      }
-    ),
-    container = list(
-      run = function(...) NULL,
-      remove = function(id, force) {
-        removed <<- id
-      }
-    )
-  )
+  calls <- list()
   local_mocked_bindings(
-    docker_client = function(...) fake_docker,
-    .package = "stevedore"
+    docker = function(args, std_in = NULL, capture = FALSE) {
+      calls[[length(calls) + 1]] <<- args
+      if (args[[1]] == "image") {
+        c("reg.example/parity:latest", "<none>:<none>")
+      }
+    }
   )
   local_mocked_bindings(
     exec_internal = function(cmd, args) {
@@ -110,7 +101,24 @@ test_that("test_lambda finds the image by tag and removes the container", {
     .package = "sys"
   )
   expect_output(test_lambda("parity", list(number = 2)), "even")
-  expect_type(removed, "character")
+  commands <- vapply(calls, `[[`, "", 1)
+  expect_equal(commands, c("image", "run", "rm"))
+  expect_true("reg.example/parity:latest" %in% calls[[2]])
 
   expect_error(test_lambda("other", list()), "No image tagged")
+})
+
+test_that("docker reports failures with the command and its error", {
+  local_mocked_bindings(
+    exec_internal = function(cmd, args, std_in, error) {
+      list(status = 1L, stdout = raw(), stderr = charToRaw("no such image"))
+    },
+    exec_wait = function(cmd, args, std_in) 125L,
+    .package = "sys"
+  )
+  expect_error(docker(c("rm", "x"), capture = TRUE), "docker rm.*no such image")
+  expect_error(
+    docker(c("build", ".")),
+    "docker build. failed with exit status 125"
+  )
 })

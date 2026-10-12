@@ -84,6 +84,35 @@ parse_password <- function(ecr_token) {
     gsub(pattern = "^AWS:", replacement = "")
 }
 
+#' Run a docker CLI command
+#'
+#' @param args character vector of arguments to `docker`
+#' @param std_in path to a file to send to standard input
+#' @param capture logical, return standard output as lines instead of
+#' printing it
+#' @noRd
+docker <- function(args, std_in = NULL, capture = FALSE) {
+  if (capture) {
+    result <- sys::exec_internal("docker", args, std_in = std_in, error = FALSE)
+    status <- result$status
+  } else {
+    status <- sys::exec_wait("docker", args, std_in = std_in)
+  }
+  if (status != 0) {
+    msg <- glue("`docker {args[[1]]}` failed with exit status {status}.")
+    if (capture) {
+      msg <- paste(msg, rawToChar(result$stderr))
+    }
+    logger::log_error(msg)
+    rlang::abort(msg)
+  }
+  if (capture) {
+    out <- rawToChar(result$stdout)
+    return(strsplit(out, "\n")[[1]])
+  }
+  invisible(NULL)
+}
+
 #' create_lambda_dockerfile
 #'
 #' @param folder path to store the Dockerfile
@@ -349,8 +378,17 @@ create_lambda_image <- function(folder, tag) {
 
   logger::log_debug("[create_lambda_image] Building docker image.")
 
-  docker_cli <- stevedore::docker_client()
-  docker_cli$image$build(context = folder, tag = repo_uri)
+  # Lambda runs x86_64 by default and rejects multi-platform image indexes,
+  # which buildx creates when it adds provenance attestations.
+  docker(c(
+    "build",
+    "--platform",
+    "linux/amd64",
+    "--provenance=false",
+    "--tag",
+    repo_uri,
+    folder
+  ))
 
   logger::log_debug("[create_lambda_image] Done.")
 }
@@ -373,27 +411,20 @@ push_lambda_image <- function(tag) {
   repo_uri <- fetch_ecr_repo(tag)
   server_address <- gsub(pattern = "/.*$", replacement = "", x = repo_uri)
 
-  docker_cli <- stevedore::docker_client()
-  docker_cli$login(
-    username = "AWS",
-    password = ecr_password,
-    serveraddress = server_address
+  # Pass the password on standard input so it doesn't show in the process
+  # list.
+  password_file <- tempfile()
+  on.exit(unlink(password_file), add = TRUE)
+  file.create(password_file)
+  Sys.chmod(password_file, "0600")
+  writeLines(ecr_password, password_file)
+  docker(
+    c("login", "--username", "AWS", "--password-stdin", server_address),
+    std_in = password_file
   )
 
   logger::log_debug("[push_lambda_image] Pushing Docker image to AWS ECR.")
-
-  tryCatch(
-    expr = {
-      docker_cli$image$push(name = repo_uri)
-    },
-    error = function(e) {
-      Sys.sleep(2)
-      logger::log_debug(
-        "[push_lambda_image] Pushing Docker image to AWS ECR. Second try."
-      )
-      docker_cli$image$push(name = repo_uri)
-    }
-  )
+  docker(c("push", paste0(repo_uri, ":latest")))
 
   logger::log_debug("[push_lambda_image] Done.")
   invisible(repo_uri)

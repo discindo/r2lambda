@@ -92,13 +92,11 @@ test_lambda <- function(tag, payload) {
   logger::log_info("[test_lambda] Converting payload list to json.")
   payload <- jsonlite::toJSON(payload, auto_unbox = TRUE)
 
-  logger::log_info("[test_lambda] Starting docker client.")
-  docker_cli <- stevedore::docker_client()
-
   logger::log_info("[test_lambda] Checking image tag exists.")
-  images <- docker_cli$image$list()
-  tags <- images[["repo_tags"]] |> unlist()
-  tags <- tags[!is.na(tags)]
+  tags <- docker(
+    c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
+    capture = TRUE
+  )
   # build_lambda tags the image with its ECR URI, <registry>/<tag>.
   repo_tag <- tags[endsWith(tags, paste0("/", tag, ":latest"))]
 
@@ -112,16 +110,14 @@ test_lambda <- function(tag, payload) {
 
   uid <- uuid::UUIDgenerate(1)
   logger::log_info("[test_lambda] Starting lambda container with name {uid}.")
-  docker_cli$container$run(
-    image = repo_tag,
-    port = "9000:8080",
-    detach = TRUE,
-    name = uid
+  docker(
+    c("run", "--detach", "--rm", "-p", "9000:8080", "--name", uid, repo_tag),
+    capture = TRUE
   )
   on.exit(
     {
       logger::log_info("[test_lambda] Removing lambda container.")
-      docker_cli$container$remove(id = uid, force = TRUE)
+      docker(c("rm", "--force", uid), capture = TRUE)
     },
     add = TRUE
   )
