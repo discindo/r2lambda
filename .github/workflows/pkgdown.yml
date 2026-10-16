@@ -39,7 +39,9 @@ jobs:
           needs: website
 
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        # quiet = FALSE: otherwise a failing article (e.g. a Quarto vignette)
+        # is reported only as "Error returned by quarto CLI", without the cause.
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE, quiet = FALSE)
         shell: Rscript {0}
         env:
           PKGDOWN_DEV_MODE: release
