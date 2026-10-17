@@ -331,5 +331,21 @@ r2lambda::schedule_lambda(
 Next Wednesday morning, we should have two objects, with keys matching the two 
 most-recent Tuesdays.
 
+## Clean up
+
+`delete_lambda` removes the schedules, the function, its execution role, the ECR
+repository with the image, the function's log group, and the local Docker image.
+It doesn't touch the S3 bucket, which we delete ourselves once it's empty:
+
+```{r}
+r2lambda::delete_lambda("tidytuesday_lambda_s3")
+
+objs <- s3_service$list_objects(Bucket = "tidytuesday-datasets")
+for (obj in objs$Contents) {
+  s3_service$delete_object(Bucket = "tidytuesday-datasets", Key = obj$Key)
+}
+s3_service$delete_bucket(Bucket = "tidytuesday-datasets")
+```
+
 # Lambda + S3 integration: Triggering Lambda when on new file in S3 bucket
 ## TODO

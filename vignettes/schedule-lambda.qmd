@@ -165,35 +165,11 @@ data.frame(Current_time_lambda = current_time_messages)
 
 ## Clean up
 
-We don't want to let a this trivial lambda fire every minute, it will still incur 
-some cost. So its wise to delete the event schedule rule and maybe even the lambda 
-function it self.
-
-To remove the event rule, we first need to remove associated targets, and then remove
-the rule.
+We don't want to let this trivial lambda fire every minute, as it still incurs
+some cost. `delete_lambda` removes the schedule, the function, its execution
+role, the ECR repository with the image, the function's log group, and the local
+Docker image:
 
 ```{r}
-# connect to the EventBridge service
-events_service <- r2lambda::aws_connect("eventbridge")
-# find the names of all rules we need
-schedule_rules <- events_service$list_rules()[[1]] |> sapply("[[", 1)
-
-# find the targets associated with the rule we want to remove
-rule_to_remove <- schedule_rules[[1]]
-
-target_arn_to_remove <- events_service$list_targets_by_rule(Rule = rule_to_remove)$Targets[[1]]$Id
-events_service$remove_targets(Rule = rule_to_remove, Ids = target_arn_to_remove)
-events_service$delete_rule(Name = rule_to_remove)
-
-events_service$list_rules()[[1]] |> sapply("[[", 1)
-
+r2lambda::delete_lambda("current_time")
 ```
-
-Finally, to remove the Lambda:
-
-```{r}
-lambda_service <- r2lambda::aws_connect("lambda")
-lambda_service$list_functions()$Functions |> sapply("[[","FunctionName")
-lambda_service$delete_function(FunctionName = "parity1")
-```
-
