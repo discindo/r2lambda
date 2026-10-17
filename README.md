@@ -20,7 +20,13 @@ to a deployed `AWS Lambda` function.
 
 ## Installation
 
-You can install the development version of `{r2lambda}` like so:
+You can install the released version of `{r2lambda}` from CRAN with:
+
+``` r
+install.packages("r2lambda")
+```
+
+You can install the development version of `{r2lambda}` from GitHub with:
 
 ``` r
 # install.packages("remotes")

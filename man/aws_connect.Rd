@@ -10,6 +10,10 @@ aws_connect(service)
 \item{service}{character, the name of a service, e.g., "lambda" or "iam".
 Should be a function exported by `paws` (see `getNamespaceExports("paws")`)}
 }
+\value{
+A `paws` client for the service: a list of functions, one per
+service operation.
+}
 \description{
 connect to an aws service
 }
