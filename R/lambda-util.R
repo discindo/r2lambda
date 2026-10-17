@@ -1,5 +1,9 @@
+has_docker <- function() {
+  nzchar(Sys.which("docker"))
+}
+
 is_docker_installed <- function() {
-  checkmate::assert_true(nzchar(Sys.which("docker")))
+  checkmate::assert_true(has_docker())
 }
 
 #' check_system_deps
@@ -703,3 +707,122 @@ add_lambda_to_eventridge <-
     )
     logger::log_debug("[add_lambda_to_eventridge] Done.")
   }
+
+#' Run an AWS call, treating a missing resource as already deleted
+#'
+#' @param expr the AWS call
+#' @return the value of `expr`, or `NULL` if the resource does not exist
+#' @noRd
+ignore_not_found <- function(expr) {
+  tryCatch(expr, error = function(e) {
+    if (!grepl("NotFound|NoSuchEntity", conditionMessage(e))) {
+      stop(e)
+    }
+    NULL
+  })
+}
+
+#' Remove a Lambda function from its EventBridge schedules
+#'
+#' Removes the function from every rule that targets it, and deletes the rules
+#' `schedule_lambda()` created once no other targets remain.
+#' @param function_arn the ARN of the Lambda function
+#' @return names of the deleted rules
+#' @noRd
+remove_lambda_schedules <- function(function_arn) {
+  aws_event <- aws_connect("eventbridge")
+
+  rules <- character()
+  token <- NULL
+  repeat {
+    page <- aws_event$list_rule_names_by_target(
+      TargetArn = function_arn,
+      NextToken = token
+    )
+    rules <- c(rules, unlist(page$RuleNames))
+    token <- page$NextToken
+    if (length(token) == 0) break
+  }
+
+  deleted <- character()
+  for (rule in rules) {
+    targets <- aws_event$list_targets_by_rule(Rule = rule)$Targets
+    is_function <- vapply(targets, function(x) x$Arn == function_arn, TRUE)
+    logger::log_debug("[remove_lambda_schedules] Removing target from {rule}.")
+    aws_event$remove_targets(
+      Rule = rule,
+      Ids = lapply(targets[is_function], function(x) x$Id)
+    )
+    if (all(is_function) && startsWith(rule, "schedule_rule_")) {
+      logger::log_debug("[remove_lambda_schedules] Deleting rule {rule}.")
+      aws_event$delete_rule(Name = rule)
+      deleted <- c(deleted, rule)
+    }
+  }
+  deleted
+}
+
+#' Delete the execution roles created for a Lambda function
+#'
+#' Deletes only roles named `<tag>--<uuid>`, as `create_lambda_exec_role()`
+#' names them, so a role passed to `deploy_lambda(role_arn = )` is kept.
+#' @param tag the tag of the Lambda function
+#' @return names of the deleted roles
+#' @noRd
+delete_lambda_exec_roles <- function(tag) {
+  iam_service <- aws_connect("iam")
+
+  roles <- character()
+  marker <- NULL
+  repeat {
+    page <- iam_service$list_roles(Marker = marker)
+    roles <- c(roles, vapply(page$Roles, function(x) x$RoleName, ""))
+    if (!isTRUE(page$IsTruncated)) {
+      break
+    }
+    marker <- page$Marker
+  }
+
+  prefix <- paste0(tag, "--")
+  suffix <- substring(roles, nchar(prefix) + 1)
+  roles <- roles[startsWith(roles, prefix) & grepl("^[0-9a-f-]{36}$", suffix)]
+
+  for (role in roles) {
+    logger::log_debug("[delete_lambda_exec_roles] Deleting role {role}.")
+    attached <- iam_service$list_attached_role_policies(RoleName = role)
+    for (policy in attached$AttachedPolicies) {
+      iam_service$detach_role_policy(
+        RoleName = role,
+        PolicyArn = policy$PolicyArn
+      )
+    }
+    inline <- iam_service$list_role_policies(RoleName = role)
+    for (policy_name in unlist(inline$PolicyNames)) {
+      iam_service$delete_role_policy(RoleName = role, PolicyName = policy_name)
+    }
+    iam_service$delete_role(RoleName = role)
+  }
+  roles
+}
+
+#' Delete the local image built for a Lambda function
+#'
+#' @param tag the tag of the image
+#' @return the name of the deleted image, or `NULL` if there is none
+#' @noRd
+delete_local_image <- function(tag) {
+  if (!has_docker()) {
+    logger::log_info("[delete_local_image] docker is not installed. Skipping.")
+    return(NULL)
+  }
+  tags <- docker(
+    c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
+    capture = TRUE
+  )
+  if (!any(endsWith(tags, paste0("/", tag, ":latest")))) {
+    return(NULL)
+  }
+  image <- find_local_image(tag)
+  docker(c("rmi", image), capture = TRUE)
+  image
+}

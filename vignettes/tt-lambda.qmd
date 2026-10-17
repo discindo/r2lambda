@@ -189,3 +189,12 @@ tidytuesday_dataset <- response$Payload |>
 tidytuesday_dataset[[1]][1:5, 1:5]
 ```
 
+### 5. Clean up
+
+When we no longer need the function, `delete_lambda` removes it together with
+its execution role, the ECR repository with the image, the function's log group,
+and the local Docker image:
+
+```{r}
+r2lambda::delete_lambda("tidytuesday3")
+```

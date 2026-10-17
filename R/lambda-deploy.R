@@ -194,7 +194,7 @@ test_lambda <- function(tag, payload) {
 #'     )
 #'
 #' }
-#' @importFrom paws ecr iam lambda s3 eventbridge
+#' @importFrom paws ecr iam lambda s3 eventbridge cloudwatchlogs
 #' @export
 deploy_lambda <-
   function(tag, policy_arns = NULL, role_arn = NULL, ...) {
@@ -465,4 +465,81 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   )
 
   logger::log_info("[schedule_lambda] Done.")
+}
+
+#' Delete a Lambda function and the AWS resources created for it
+#'
+#' Removes what `build_lambda()`, `deploy_lambda()` and `schedule_lambda()`
+#' created for `tag`: the function's EventBridge schedules, the function, its
+#' execution roles, the ECR repository with its images, the function's
+#' CloudWatch log group, and the local Docker image. Resources that don't
+#' exist are skipped, so it also cleans up after a failed deploy.
+#'
+#' Only roles named `<tag>--<uuid>`, as `deploy_lambda()` names them, are
+#' deleted. A role passed to `deploy_lambda(role_arn = )` is kept. A
+#' schedule rule that also targets other resources is kept, without this
+#' function as a target.
+#'
+#' @param tag The tag used with `build_lambda()` and `deploy_lambda()`, which
+#' is also the function name.
+#' @param keep_ecr_image logical, whether to keep the ECR repository and its
+#' images (default: FALSE)
+#' @param keep_local_image logical, whether to keep the local Docker image
+#' (default: FALSE)
+#' @return Invisibly, a list with the names of the deleted resources.
+#'
+#' @examples
+#' \dontrun{
+#'   delete_lambda("parity1")
+#' }
+#' @export
+delete_lambda <- function(
+  tag,
+  keep_ecr_image = FALSE,
+  keep_local_image = FALSE
+) {
+  checkmate::assert_string(tag, min.chars = 1)
+  checkmate::assert_flag(keep_ecr_image)
+  checkmate::assert_flag(keep_local_image)
+  deleted <- list()
+
+  lambda_service <- aws_connect("lambda")
+  function_arn <- ignore_not_found(
+    lambda_service$get_function(FunctionName = tag)$Configuration$FunctionArn
+  )
+  if (is.null(function_arn)) {
+    logger::log_info("[delete_lambda] No Lambda function named {tag}.")
+  } else {
+    logger::log_info("[delete_lambda] Removing schedules.")
+    deleted$schedule_rules <- remove_lambda_schedules(function_arn)
+    logger::log_info("[delete_lambda] Deleting Lambda function {tag}.")
+    lambda_service$delete_function(FunctionName = tag)
+    deleted$lambda_function <- tag
+  }
+
+  logger::log_info("[delete_lambda] Deleting execution roles.")
+  deleted$iam_roles <- delete_lambda_exec_roles(tag)
+
+  if (!keep_ecr_image) {
+    logger::log_info("[delete_lambda] Deleting ECR repository {tag}.")
+    repo <- ignore_not_found(
+      aws_connect("ecr")$delete_repository(repositoryName = tag, force = TRUE)
+    )
+    deleted$ecr_repository <- if (!is.null(repo)) tag
+  }
+
+  log_group <- glue("/aws/lambda/{tag}")
+  logger::log_info("[delete_lambda] Deleting log group {log_group}.")
+  logs <- ignore_not_found(
+    aws_connect("cloudwatchlogs")$delete_log_group(logGroupName = log_group)
+  )
+  deleted$log_group <- if (!is.null(logs)) as.character(log_group)
+
+  if (!keep_local_image) {
+    logger::log_info("[delete_lambda] Deleting local Docker image.")
+    deleted$local_image <- delete_local_image(tag)
+  }
+
+  logger::log_success("[delete_lambda] Done.")
+  invisible(deleted)
 }
