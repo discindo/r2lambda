@@ -2,6 +2,7 @@
 
 export(aws_connect)
 export(build_lambda)
+export(delete_lambda)
 export(deploy_lambda)
 export(invoke_lambda)
 export(schedule_lambda)
@@ -13,6 +14,7 @@ importFrom(glue,
   single_quote
 )
 importFrom(paws,
+  cloudwatchlogs,
   ecr,
   eventbridge,
   iam,

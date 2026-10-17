@@ -121,6 +121,21 @@ invoke_lambda(
 #> {"parity":"even"}
 ```
 
+### Clean up
+
+`delete_lambda()` removes what the steps above created: the function
+and its schedules, the execution role, the ECR repository with its
+images, the function’s log group, and the local Docker image.
+
+``` r
+delete_lambda("parity1")
+
+# Keep the images, for example to deploy them again later
+delete_lambda("parity1", keep_ecr_image = TRUE, keep_local_image = TRUE)
+```
+
+A role you passed with `deploy_lambda(role_arn = )` is never deleted.
+
 ## Code of Conduct
 
 Please note that the r2lambda project is released with a [Contributor
