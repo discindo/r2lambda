@@ -9,4 +9,8 @@
 library(testthat)
 library(r2lambda)
 
-test_check("r2lambda")
+# tests/testthat/setup.R uses withr to keep tests away from real AWS
+# credentials, so the suite can't run without it.
+if (requireNamespace("withr", quietly = TRUE)) {
+  test_check("r2lambda")
+}

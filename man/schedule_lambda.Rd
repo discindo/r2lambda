@@ -14,13 +14,17 @@ is done internally make sure the Lambda exists and fetch its ARN.}
 `rate` or `cron` specification. For details see the official documentation:
 https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html}
 }
+\value{
+None, called for its side effect of creating the schedule.
+}
 \description{
 Put a deployed lambda function on a schedule
 }
 \examples{
 \dontrun{
-  # Make Tidytuesday lambda fetch the Tidytuesday dataset every wednesday
-at 8 am schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+  # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
+  # at 8 am
+  schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
 }
 
 }

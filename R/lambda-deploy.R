@@ -24,6 +24,16 @@
 #' packages, not both. By default, both are `NULL`, so the Docker image will
 #' have no additional packages installed.
 #'
+#' @return None, called for its side effect of building a local Docker image.
+#'
+#' @examples
+#' \dontrun{
+#'   build_lambda(
+#'     tag = "parity1",
+#'     runtime_function = "parity",
+#'     runtime_path = system.file("parity.R", package = "r2lambda")
+#'   )
+#' }
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
 build_lambda <- function(
@@ -92,6 +102,7 @@ build_lambda <- function(
   )
 
   logger::log_success("[build_lambda] Done.")
+  invisible(NULL)
 }
 
 #' test a lambda locally
@@ -99,6 +110,10 @@ build_lambda <- function(
 #' @param tag The tag of an existing local image tagged with ECR repo
 #' (see `build_lambda`)
 #' @param payload Named list. Arguments to lambda function.
+#'
+#' @return Invisibly, the result of [sys::exec_internal()] for the `curl` call
+#' to the local container: a list with `status`, and `stdout` and `stderr` as
+#' raw vectors. The response is also printed.
 #'
 #' @examples
 #' \dontrun{
@@ -170,6 +185,9 @@ test_lambda <- function(tag, payload) {
 #' @param ... Arguments passed onto `paws::lambda()$create_function()`, for
 #' example `Timeout`, `MemorySize` or `Environment`. `Architectures` is set
 #' from the image's architecture.
+#'
+#' @return Invisibly, a list with `ECR_image_uri`, `IAM_lambda_role_arn` and
+#' `Lambda_function_arn`.
 #'
 #' @examples
 #' \dontrun{
@@ -315,6 +333,9 @@ deploy_lambda <-
 #' or ‘Event’ see `?paws.compute::lambda_invoke`
 #' @param payload A named list internally converted to json
 #' @param include_logs logical, whether to show the lambda logs (default: FALSE)
+#' @return Invisibly, the response of `paws::lambda()$invoke()`, a list with
+#' elements such as `StatusCode` and `Payload` (a raw vector). The payload is
+#' also printed.
 #' @examples
 #' \dontrun{
 #'   invoke_lambda(
@@ -377,10 +398,13 @@ invoke_lambda <-
 #' `rate` or `cron` specification. For details see the official documentation:
 #' https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html
 #'
+#' @return None, called for its side effect of creating the schedule.
+#'
 #' @examples
 #' \dontrun{
-#'   # Make Tidytuesday lambda fetch the Tidytuesday dataset every wednesday
-#' at 8 am schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+#'   # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
+#'   # at 8 am
+#'   schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
 #' }
 #'
 #' @export
@@ -465,6 +489,7 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   )
 
   logger::log_info("[schedule_lambda] Done.")
+  invisible(NULL)
 }
 
 #' Delete a Lambda function and the AWS resources created for it

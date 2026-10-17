@@ -43,6 +43,9 @@ some libraries, such as GDAL, are not available. Default is NULL.}
 an arm64 image on an x86_64 machine, or the reverse, needs Docker's QEMU
 emulation.}
 }
+\value{
+None, called for its side effect of building a local Docker image.
+}
 \description{
 build and tag lambda image locally
 }
@@ -50,4 +53,13 @@ build and tag lambda image locally
 Use either `renvlock_path` or `dependencies` to install required
 packages, not both. By default, both are `NULL`, so the Docker image will
 have no additional packages installed.
+}
+\examples{
+\dontrun{
+  build_lambda(
+    tag = "parity1",
+    runtime_function = "parity",
+    runtime_path = system.file("parity.R", package = "r2lambda")
+  )
+}
 }

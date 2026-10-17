@@ -16,6 +16,11 @@ or ‘Event’ see `?paws.compute::lambda_invoke`}
 
 \item{include_logs}{logical, whether to show the lambda logs (default: FALSE)}
 }
+\value{
+Invisibly, the response of `paws::lambda()$invoke()`, a list with
+elements such as `StatusCode` and `Payload` (a raw vector). The payload is
+also printed.
+}
 \description{
 invoke a lambda function
 }

@@ -24,6 +24,10 @@ must trust `lambda.amazonaws.com`.}
 example `Timeout`, `MemorySize` or `Environment`. `Architectures` is set
 from the image's architecture.}
 }
+\value{
+Invisibly, a list with `ECR_image_uri`, `IAM_lambda_role_arn` and
+`Lambda_function_arn`.
+}
 \description{
 deploy a local lambda image to AWS Lambda
 }
