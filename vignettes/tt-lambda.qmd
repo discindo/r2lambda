@@ -1,21 +1,18 @@
 ---
 title: "Tidy Tuesday dataset Lambda"
-output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{tt-lambda}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"
+    eval: false
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  eval = FALSE
-)
-```
-
-```{r setup}
+```{r}
+#| label: setup
 library(r2lambda)
 library(jsonlite)
 library(magrittr)
