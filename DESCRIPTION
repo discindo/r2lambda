@@ -27,11 +27,12 @@ Suggests:
     covr,
     knitr,
     paws.common,
+    quarto,
     rmarkdown,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
-VignetteBuilder: knitr
+VignetteBuilder: quarto
 URL: https://discindo.github.io/r2lambda/, https://github.com/discindo/r2lambda
 BugReports: https://github.com/discindo/r2lambda/issues
 Config/roxygen2/version: 8.1.0
