@@ -91,6 +91,15 @@ test_lambda(tag = "parity1", payload)
 deploy_lambda(tag = "parity1")
 ```
 
+Lambda stops a function after 3 seconds by default, which an R
+container may not meet, especially on its first call. Pass a longer
+`Timeout`, in seconds, and other `create_function()` settings through
+`...`:
+
+``` r
+deploy_lambda(tag = "parity1", Timeout = 30, MemorySize = 512)
+```
+
 The function runs under a new IAM role with basic execution permissions.
 To let it call other AWS services, attach policies to that role, or use
 a role you already have:
@@ -119,6 +128,16 @@ invoke_lambda(
 
 #> Lambda response payload:
 #> {"parity":"even"}
+```
+
+### Run on a schedule
+
+`schedule_lambda()` runs a deployed function at a `rate()` or `cron()`
+[schedule
+expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html):
+
+``` r
+schedule_lambda("parity1", "rate(5 minutes)")
 ```
 
 ### Clean up
