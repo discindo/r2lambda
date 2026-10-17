@@ -16,7 +16,7 @@ authors:
     email: nnovica@gmail.com
     orcid: "https://orcid.org/0009-0005-7773-7718"
 version: 0.1.0 # x-release-please-version
-date-released: 2026-10-12
+date-released: 2026-10-17
 license: GPL-3.0-or-later
 url: "https://discindo.github.io/r2lambda/"
 repository-code: "https://github.com/discindo/r2lambda"

@@ -1,3 +1,22 @@
+## [0.1.0](https://github.com/discindo/r2lambda/compare/v0.1.0...v0.1.0) (2026-10-17)
+
+
+### New features
+
+* add delete_lambda() to remove a function's AWS resources ([#41](https://github.com/discindo/r2lambda/issues/41)) ([13abc85](https://github.com/discindo/r2lambda/commit/13abc855b020902f7f14a916fcd34ce72f7d40d8))
+
+
+### Bug fixes
+
+* send EventBridge target ID as a string ([#40](https://github.com/discindo/r2lambda/issues/40)) ([d69201a](https://github.com/discindo/r2lambda/commit/d69201a6c0f43d3e609556c16198e83e84e9cd81))
+
+
+### Documentation
+
+* convert vignettes to Quarto ([#37](https://github.com/discindo/r2lambda/issues/37)) ([2fd68c7](https://github.com/discindo/r2lambda/commit/2fd68c7d1e9506929859dd1596c6b0d48063952c))
+* maintain README.md directly and drop README.Rmd ([#39](https://github.com/discindo/r2lambda/issues/39)) ([3b2ff98](https://github.com/discindo/r2lambda/commit/3b2ff98a52bc36b4f195308ea18a053a29876ccf))
+* meet CRAN extra checks ([#42](https://github.com/discindo/r2lambda/issues/42)) ([4968dbf](https://github.com/discindo/r2lambda/commit/4968dbf65a62545b6cf2ff92a87207ac62df9630))
+
 ## 0.1.0 (2026-10-12)
 
 
