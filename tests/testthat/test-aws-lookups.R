@@ -84,6 +84,19 @@ test_that("schedule_lambda builds valid rule and statement names", {
   expect_match(statement, "^[A-Za-z0-9_-]+$")
 })
 
+test_that("add_lambda_to_eventridge sends the target ID as a string", {
+  targets <- NULL
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(put_targets = function(Rule, Targets) {
+        targets <<- Targets
+      })
+    }
+  )
+  add_lambda_to_eventridge("a_rule", "arn:fn")
+  expect_type(targets[[1]]$Id, "character")
+})
+
 test_that("test_lambda finds the image by tag and removes the container", {
   calls <- list()
   local_mocked_bindings(

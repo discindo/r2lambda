@@ -699,7 +699,7 @@ add_lambda_to_eventridge <-
     aws_event <- aws_connect("eventbridge")
     aws_event$put_targets(
       Rule = rule_name,
-      Targets = list(list(Id = 1, Arn = lambda_function_arn))
+      Targets = list(list(Id = "1", Arn = lambda_function_arn))
     )
     logger::log_debug("[add_lambda_to_eventridge] Done.")
   }
