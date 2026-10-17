@@ -88,7 +88,9 @@ test_that("add_lambda_to_eventridge sends the target ID as a string", {
   targets <- NULL
   local_mocked_bindings(
     aws_connect = function(service) {
-      list(put_targets = function(Rule, Targets) targets <<- Targets)
+      list(put_targets = function(Rule, Targets) {
+        targets <<- Targets
+      })
     }
   )
   add_lambda_to_eventridge("a_rule", "arn:fn")
