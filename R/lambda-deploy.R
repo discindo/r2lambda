@@ -115,6 +115,12 @@ build_lambda <- function(
 #' to the local container: a list with `status`, and `stdout` and `stderr` as
 #' raw vectors. The response is also printed.
 #'
+#' @details
+#' The container takes a moment to start, so the request is retried when the
+#' connection fails. If a connection drops after the function already ran, the
+#' function runs again, so a function with side effects, such as writing to
+#' S3, can run more than once.
+#'
 #' @examples
 #' \dontrun{
 #'   payload <- list(number = 2)
