@@ -6,3 +6,10 @@ template:
 # release site.
 development:
   mode: release
+
+articles:
+  - title: Tutorials
+    contents:
+      - articles/tt-lambda
+      - articles/schedule-lambda
+      - articles/lambda-s3
