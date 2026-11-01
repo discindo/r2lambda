@@ -449,12 +449,11 @@ schedule_lambda <- function(lambda_function, execution_rate) {
   )
 
   # Rule names allow [.-_A-Za-z0-9] and 64 characters; permission statement
-  # IDs allow [-_A-Za-z0-9].
+  # IDs allow [-_A-Za-z0-9] and 100 characters.
   rate_clean <- gsub("[^A-Za-z0-9_-]", "_", execution_rate)
   function_clean <- gsub("[^A-Za-z0-9_-]", "_", lambda_function)
-  rule_name <- substr(
+  rule_name <- schedule_name(
     glue("schedule_rule_{rate_clean}_{function_clean}"),
-    1,
     64
   )
   logger::log_info(
@@ -477,7 +476,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
     }
   )
 
-  event_name <- glue("schedule_event_{rate_clean}_{function_clean}")
+  event_name <- schedule_name(
+    glue("schedule_event_{rate_clean}_{function_clean}"),
+    100
+  )
   logger::log_info(
     "[schedule_lambda] Adding permission to execute lambda to event with name {event_name}" # nolint
   )

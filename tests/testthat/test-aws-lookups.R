@@ -84,6 +84,43 @@ test_that("schedule_lambda builds valid rule and statement names", {
   expect_match(statement, "^[A-Za-z0-9_-]+$")
 })
 
+test_that("schedule_name keeps short names and makes long ones distinct", {
+  expect_equal(
+    schedule_name("schedule_rule_rate_1_minute_f", 64),
+    "schedule_rule_rate_1_minute_f"
+  )
+
+  prefix <- "schedule_rule_rate_5_minutes_data_ingestion_pipeline_for_sensors"
+  daily <- schedule_name(paste0(prefix, "_daily"), 64)
+  weekly <- schedule_name(paste0(prefix, "_weekly"), 64)
+  expect_equal(nchar(daily), 64)
+  expect_equal(nchar(weekly), 64)
+  expect_false(daily == weekly)
+  expect_equal(daily, schedule_name(paste0(prefix, "_daily"), 64))
+})
+
+test_that("schedule_lambda keeps the statement name within 100 characters", {
+  statement <- NULL
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(get_function = function(FunctionName) {
+        list(Configuration = list(FunctionArn = "arn:fn"))
+      })
+    },
+    create_event_rule_for_schedule = function(rule_name, rate) "arn:rule",
+    lambda_add_permission_for_schedule = function(
+      function_name,
+      scheduled_event_name,
+      scheduled_rule_arn
+    ) {
+      statement <<- scheduled_event_name
+    },
+    add_lambda_to_eventridge = function(rule_name, lambda_function_arn) NULL
+  )
+  schedule_lambda(strrep("f", 64), "cron(0/5 8-17 ? * MON-FRI *)")
+  expect_lte(nchar(statement), 100)
+})
+
 test_that("add_lambda_to_eventridge sends the target ID as a string", {
   targets <- NULL
   local_mocked_bindings(
