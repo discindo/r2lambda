@@ -149,7 +149,7 @@ test_lambda <- function(tag, payload) {
     "--silent",
     "--retry",
     "10",
-    "--retry-connrefused",
+    "--retry-all-errors",
     "--retry-delay",
     "1",
     "-XPOST",
