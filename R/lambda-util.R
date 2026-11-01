@@ -242,6 +242,7 @@ create_lambda_dockerfile <-
     checkmate::assert_character(
       x = system_deps,
       pattern = "^[A-Za-z0-9][A-Za-z0-9._+-]*$",
+      min.len = 1,
       any.missing = FALSE,
       null.ok = TRUE
     )
@@ -543,7 +544,14 @@ push_lambda_image <- function(repo_uri) {
   invisible(repo_uri)
 }
 
+#' AWS managed policy every execution role gets, for CloudWatch logging
+#' @noRd
+lambda_basic_policy <- "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # nolint
+
 #' create_lambda_exec_role
+#'
+#' If a policy can't be attached, the new role is deleted before the error is
+#' raised, so a failed deploy leaves no role behind.
 #' @param tag the tag of an existing local image
 #' @param policy_arns ARNs of IAM policies to attach besides the basic
 #' execution policy
@@ -570,11 +578,28 @@ create_lambda_exec_role <- function(tag, policy_arns = NULL) {
     AssumeRolePolicyDocument = role_string
   )
 
-  basic_policy <- "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # nolint
-  for (policy_arn in unique(c(basic_policy, policy_arns))) {
-    logger::log_debug("[create_lambda_exec_role] Attaching {policy_arn}.")
-    iam_service$attach_role_policy(RoleName = role_name, PolicyArn = policy_arn)
-  }
+  attached <- character()
+  tryCatch(
+    for (policy_arn in unique(c(lambda_basic_policy, policy_arns))) {
+      logger::log_debug("[create_lambda_exec_role] Attaching {policy_arn}.")
+      iam_service$attach_role_policy(
+        RoleName = role_name,
+        PolicyArn = policy_arn
+      )
+      attached <- c(attached, policy_arn)
+    },
+    error = function(e) {
+      logger::log_debug("[create_lambda_exec_role] Deleting role {role_name}.")
+      for (policy_arn in attached) {
+        iam_service$detach_role_policy(
+          RoleName = role_name,
+          PolicyArn = policy_arn
+        )
+      }
+      iam_service$delete_role(RoleName = role_name)
+      stop(e)
+    }
+  )
 
   logger::log_debug("[create_lambda_exec_role] Done.")
   invisible(role_meta)
