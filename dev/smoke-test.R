@@ -131,7 +131,10 @@ local({
       }
     )
     check(lambda_gone, "function deleted")
-    check(length(delete_lambda_exec_roles(tag)) == 0, "no roles left")
+    roles_left <- aws_connect("iam")$list_roles(
+      PathPrefix = lambda_exec_role_path(tag)
+    )$Roles
+    check(length(roles_left) == 0, "no roles left")
   })
 
   build_lambda(
