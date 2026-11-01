@@ -53,15 +53,94 @@ test_that("runtime_line works with correct input", {
 test_that("renv_line works", {
   expect_error(renv_line(renvlock = 1))
 
-  renvlock <- renv_line("renv.lock")
-  test <- glue::glue_collapse(
-    c(
-      "COPY renv.lock renv.lock",
-      "RUN Rscript -e 'renv::restore()'"
-    ),
-    sep = "\n"
+  lines <- strsplit(renv_line("renv.lock"), "\n")[[1]]
+  expect_equal(lines[[1]], "COPY renv.lock renv.lock")
+  expect_match(lines[[2]], "^RUN Rscript -e '[^']+'$")
+
+  lines <- strsplit(renv_line("renv.lock", git = TRUE), "\n")[[1]]
+  expect_equal(lines[[1]], "RUN dnf -y install git && dnf clean all")
+})
+
+test_that("lockfile_has_git finds packages from a git remote", {
+  lockfile <- withr::local_tempfile(fileext = ".lock")
+  write_lock <- function(packages) {
+    jsonlite::write_json(
+      list(R = list(Version = "4.6.1"), Packages = packages),
+      lockfile,
+      auto_unbox = TRUE
+    )
+  }
+  write_lock(list(glue = list(Package = "glue", Source = "Repository")))
+  expect_false(lockfile_has_git(lockfile))
+  write_lock(list(
+    glue = list(Package = "glue", Source = "Repository"),
+    mypkg = list(Package = "mypkg", RemoteType = "git")
+  ))
+  expect_true(lockfile_has_git(lockfile))
+  write_lock(list(mypkg = list(Package = "mypkg", RemoteType = "xgit")))
+  expect_true(lockfile_has_git(lockfile))
+  write_lock(list(mypkg = list(Package = "mypkg", Source = "git")))
+  expect_true(lockfile_has_git(lockfile))
+  write_lock(list())
+  expect_false(lockfile_has_git(lockfile))
+})
+
+test_that("renv_line restores from the lockfile repos with CRAN replaced", {
+  skip_if_not_installed("renv")
+  restore_code <- function() {
+    line <- strsplit(renv_line("renv.lock"), "\n")[[1]][[2]]
+    parse(text = sub("^RUN Rscript -e '(.*)'$", "\\1", line))
+  }
+  restore_repos <- function(repositories) {
+    dir <- withr::local_tempdir()
+    lockfile <- list(R = list(Version = "4.6.1"), Packages = list())
+    lockfile$R$Repositories <- repositories
+    jsonlite::write_json(
+      lockfile,
+      file.path(dir, "renv.lock"),
+      auto_unbox = TRUE
+    )
+    withr::local_dir(dir)
+    withr::local_envvar(R_REPO = "https://ppm/rhel9")
+    used <- NULL
+    local_mocked_bindings(
+      restore = function(repos) {
+        used <<- repos
+      },
+      .package = "renv"
+    )
+    eval(restore_code(), envir = new.env())
+    used
+  }
+
+  expect_equal(
+    restore_repos(list(
+      list(Name = "CRAN", URL = "https://cloud.r-project.org"),
+      list(Name = "ru", URL = "https://x.r-universe.dev")
+    )),
+    c(CRAN = "https://ppm/rhel9", ru = "https://x.r-universe.dev")
   )
-  expect_equal(test, renvlock)
+  expect_equal(
+    restore_repos(list(
+      list(
+        Name = "RSPM",
+        URL = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+      )
+    )),
+    c(RSPM = "https://ppm/rhel9")
+  )
+  bioc <- "https://packagemanager.posit.co/bioconductor/packages/3.19/bioc"
+  expect_equal(
+    restore_repos(list(
+      list(Name = "CRAN", URL = "https://cloud.r-project.org"),
+      list(Name = "BioCsoft", URL = bioc)
+    )),
+    c(CRAN = "https://ppm/rhel9", BioCsoft = bioc)
+  )
+  expect_equal(
+    restore_repos(list(list(Name = "ru", URL = "https://x.r-universe.dev"))),
+    c(CRAN = "https://ppm/rhel9", ru = "https://x.r-universe.dev")
+  )
 })
 
 #####
