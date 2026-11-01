@@ -40,23 +40,31 @@ wait_until <- function(condition, what, timeout = 300, every = 10) {
   message("OK: ", what)
 }
 
+# All CloudWatch log events of the function, across result pages. `...` goes
+# to filter_log_events(), e.g. startTime or filterPattern.
+log_events <- function(tag, ...) {
+  logs <- aws_connect("cloudwatchlogs")
+  events <- list()
+  token <- NULL
+  repeat {
+    page <- logs$filter_log_events(
+      logGroupName = paste0("/aws/lambda/", tag),
+      nextToken = token,
+      ...
+    )
+    events <- c(events, page$events)
+    token <- page$nextToken
+    if (length(token) == 0 || !nzchar(token)) break
+  }
+  events
+}
+
 # Writes the function's CloudWatch log events to a file before
 # delete_lambda() removes the log group. Never fails, so cleanup still runs.
 save_function_logs <- function(tag, path) {
   result <- tryCatch(
     {
-      logs <- aws_connect("cloudwatchlogs")
-      events <- list()
-      token <- NULL
-      repeat {
-        page <- logs$filter_log_events(
-          logGroupName = paste0("/aws/lambda/", tag),
-          nextToken = token
-        )
-        events <- c(events, page$events)
-        token <- page$nextToken
-        if (length(token) == 0 || !nzchar(token)) break
-      }
+      events <- log_events(tag)
       lines <- vapply(
         events,
         function(e) {
@@ -137,10 +145,26 @@ local({
     check(length(roles_left) == 0, "no roles left")
   })
 
+  # A scheduled run calls the handler with no arguments, so give `number` a
+  # default.
+  runtime_path <- file.path(tempdir(), "parity.R")
+  writeLines(
+    sub(
+      "function(number)",
+      "function(number = 2)",
+      readLines(system.file("parity.R", package = "r2lambda")),
+      fixed = TRUE
+    ),
+    runtime_path
+  )
+  check(
+    any(grepl("function(number = 2)", readLines(runtime_path), fixed = TRUE)),
+    "runtime has a default for number"
+  )
   build_lambda(
     tag = tag,
     runtime_function = "parity",
-    runtime_path = system.file("parity.R", package = "r2lambda"),
+    runtime_path = runtime_path,
     architecture = architecture
   )
 
@@ -171,27 +195,27 @@ local({
     "deployed invocation returns even"
   )
 
-  # Scheduled invocations send an EventBridge event, which parity() can't
-  # take, so they fail. Each attempt still writes a START line to the log.
   schedule_lambda(tag, "rate(1 minute)")
-  logs <- aws_connect("cloudwatchlogs")
   started_at <- as.numeric(Sys.time()) * 1000
+  scheduled_events <- function(pattern) {
+    log_events(tag, startTime = started_at, filterPattern = pattern)
+  }
+  # REPORT is the last line of a finished run, whether it failed or not. The
+  # log group may not exist yet, so a failed query means "not yet".
   wait_until(
     function() {
-      events <- tryCatch(
-        logs$filter_log_events(
-          logGroupName = paste0("/aws/lambda/", tag),
-          startTime = started_at,
-          filterPattern = "START"
-        )$events,
-        error = function(e) list()
-      )
-      length(events) > 0
+      length(tryCatch(scheduled_events("REPORT"), error = function(e) NULL)) > 0
     },
     "scheduled invocation ran",
     timeout = 240,
     every = 30
   )
+  # lambdr logs a failed run's error with logger::log_error().
+  errors <- scheduled_events("ERROR")
+  for (event in errors) {
+    message(event$message)
+  }
+  check(length(errors) == 0, "scheduled invocation succeeded")
 })
 
 message("Smoke test passed.")
