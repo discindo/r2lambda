@@ -1,3 +1,19 @@
+## [0.3.0](https://github.com/discindo/r2lambda/compare/v0.2.0...v0.3.0) (2026-11-01)
+
+
+### New features
+
+* raise errors with cli ([#49](https://github.com/discindo/r2lambda/issues/49)) ([b72e349](https://github.com/discindo/r2lambda/commit/b72e349f9fdb86413910bd8dda842cf41ce83875))
+
+
+### Bug fixes
+
+* check deploy_lambda() inputs before pushing the image ([#59](https://github.com/discindo/r2lambda/issues/59)) ([691a9f8](https://github.com/discindo/r2lambda/commit/691a9f80e967a1bde7b083c07608303d534b6bd4))
+* keep schedule rule and statement names distinct and within limits ([#56](https://github.com/discindo/r2lambda/issues/56)) ([13c8dc3](https://github.com/discindo/r2lambda/commit/13c8dc3f6a239a4d8d3010e5aedb400c25141b8d))
+* limit delete_lambda() to the current region's unused roles ([#57](https://github.com/discindo/r2lambda/issues/57)) ([aa17fe9](https://github.com/discindo/r2lambda/commit/aa17fe93411615433c53688cfaaea7b0583d4919))
+* restore renv lockfiles from their own repositories ([#58](https://github.com/discindo/r2lambda/issues/58)) ([2d9b944](https://github.com/discindo/r2lambda/commit/2d9b944477e9616b460bb024ea160d4f5cd43430))
+* retry test_lambda() requests on any curl error ([#55](https://github.com/discindo/r2lambda/issues/55)) ([2cc00f5](https://github.com/discindo/r2lambda/commit/2cc00f542281c8b6611543f821f39250e33469c8))
+
 ## [0.2.0](https://github.com/discindo/r2lambda/compare/v0.1.0...v0.2.0) (2026-11-01)
 
 
