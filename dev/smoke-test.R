@@ -137,10 +137,26 @@ local({
     check(length(roles_left) == 0, "no roles left")
   })
 
+  # A scheduled run calls the handler with no arguments, so give `number` a
+  # default.
+  runtime_path <- file.path(tempdir(), "parity.R")
+  writeLines(
+    sub(
+      "function(number)",
+      "function(number = 2)",
+      readLines(system.file("parity.R", package = "r2lambda")),
+      fixed = TRUE
+    ),
+    runtime_path
+  )
+  check(
+    any(grepl("function(number = 2)", readLines(runtime_path), fixed = TRUE)),
+    "runtime has a default for number"
+  )
   build_lambda(
     tag = tag,
     runtime_function = "parity",
-    runtime_path = system.file("parity.R", package = "r2lambda"),
+    runtime_path = runtime_path,
     architecture = architecture
   )
 
@@ -171,27 +187,32 @@ local({
     "deployed invocation returns even"
   )
 
-  # Scheduled invocations send an EventBridge event, which parity() can't
-  # take, so they fail. Each attempt still writes a START line to the log.
   schedule_lambda(tag, "rate(1 minute)")
   logs <- aws_connect("cloudwatchlogs")
   started_at <- as.numeric(Sys.time()) * 1000
+  scheduled_events <- function(pattern) {
+    tryCatch(
+      logs$filter_log_events(
+        logGroupName = paste0("/aws/lambda/", tag),
+        startTime = started_at,
+        filterPattern = pattern
+      )$events,
+      error = function(e) list()
+    )
+  }
+  # REPORT is the last line of a finished run, whether it failed or not.
   wait_until(
-    function() {
-      events <- tryCatch(
-        logs$filter_log_events(
-          logGroupName = paste0("/aws/lambda/", tag),
-          startTime = started_at,
-          filterPattern = "START"
-        )$events,
-        error = function(e) list()
-      )
-      length(events) > 0
-    },
+    function() length(scheduled_events("REPORT")) > 0,
     "scheduled invocation ran",
     timeout = 240,
     every = 30
   )
+  # lambdr logs a failed run's error with logger::log_error().
+  errors <- scheduled_events("ERROR")
+  for (event in errors) {
+    message(event$message)
+  }
+  check(length(errors) == 0, "scheduled invocation succeeded")
 })
 
 message("Smoke test passed.")
