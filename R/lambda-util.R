@@ -23,9 +23,7 @@ check_system_dependencies <- function() {
 #' @return A `paws` client for the service: a list of functions, one per
 #' service operation.
 #' @examples
-#' \dontrun{
 #' aws_connect("lambda")
-#' }
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
 aws_connect <- function(service) {

@@ -19,7 +19,7 @@ Description: Build, test and deploy 'R' scripts as Amazon Web Services
 License: GPL (>= 3)
 Depends: R (>= 4.1.0)
 Encoding: UTF-8
-SystemRequirements: Docker
+SystemRequirements: Docker with the buildx plugin, curl
 Imports: 
     checkmate,
     glue,

@@ -18,7 +18,5 @@ service operation.
 connect to an aws service
 }
 \examples{
-\dontrun{
 aws_connect("lambda")
-}
 }
