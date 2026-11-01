@@ -388,3 +388,11 @@ test_that("aws_region reads the region from the paws config", {
   )
   expect_error(aws_region(), "Can't find the AWS region")
 })
+
+test_that("aws_region finds the region paws resolves from the environment", {
+  withr::local_envvar(AWS_REGION = "sa-east-1", AWS_DEFAULT_REGION = NA)
+  expect_equal(aws_region(), "sa-east-1")
+
+  withr::local_envvar(AWS_REGION = NA, AWS_DEFAULT_REGION = "ca-central-1")
+  expect_equal(aws_region(), "ca-central-1")
+})
