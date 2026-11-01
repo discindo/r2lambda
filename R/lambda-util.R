@@ -551,7 +551,7 @@ lambda_basic_policy <- "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecu
 #' create_lambda_exec_role
 #'
 #' If a policy can't be attached, the new role is deleted before the error is
-#' raised, so a failed deploy leaves no role behind.
+#' raised. If that deletion fails too, a warning names the role left behind.
 #' @param tag the tag of an existing local image
 #' @param policy_arns ARNs of IAM policies to attach besides the basic
 #' execution policy
@@ -590,13 +590,23 @@ create_lambda_exec_role <- function(tag, policy_arns = NULL) {
     },
     error = function(e) {
       logger::log_debug("[create_lambda_exec_role] Deleting role {role_name}.")
-      for (policy_arn in attached) {
-        iam_service$detach_role_policy(
-          RoleName = role_name,
-          PolicyArn = policy_arn
-        )
-      }
-      iam_service$delete_role(RoleName = role_name)
+      tryCatch(
+        {
+          for (policy_arn in attached) {
+            iam_service$detach_role_policy(
+              RoleName = role_name,
+              PolicyArn = policy_arn
+            )
+          }
+          iam_service$delete_role(RoleName = role_name)
+        },
+        error = function(cleanup_error) {
+          cli::cli_warn(
+            "Failed to delete the IAM role {.val {role_name}}; delete it by hand.",
+            parent = cleanup_error
+          )
+        }
+      )
       stop(e)
     }
   )

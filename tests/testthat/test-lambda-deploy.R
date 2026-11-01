@@ -174,6 +174,36 @@ test_that("create_lambda_exec_role deletes the role when a policy fails", {
   expect_equal(calls, c("attach", "detach", "delete_role"))
 })
 
+test_that("create_lambda_exec_role keeps the attach error when cleanup fails", {
+  local_mocked_bindings(
+    aws_region = function() "eu-west-1",
+    aws_connect = function(service) {
+      list(
+        create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
+          list(Role = list(Arn = "arn:role"))
+        },
+        attach_role_policy = function(RoleName, PolicyArn) {
+          if (grepl("Missing", PolicyArn)) {
+            stop("NoSuchEntity (HTTP 404). Policy does not exist.")
+          }
+        },
+        detach_role_policy = function(RoleName, PolicyArn) NULL,
+        delete_role = function(RoleName) stop("AccessDenied")
+      )
+    }
+  )
+  expect_warning(
+    expect_error(
+      create_lambda_exec_role(
+        "f",
+        policy_arns = "arn:aws:iam::aws:policy/Missing"
+      ),
+      "NoSuchEntity"
+    ),
+    "delete it by hand"
+  )
+})
+
 test_that("deploy_lambda checks the ARNs before touching AWS", {
   local_mocked_bindings(
     fetch_ecr_repo = function(...) stop("should not look up the repository")
