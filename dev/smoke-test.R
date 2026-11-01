@@ -191,18 +191,18 @@ local({
   logs <- aws_connect("cloudwatchlogs")
   started_at <- as.numeric(Sys.time()) * 1000
   scheduled_events <- function(pattern) {
-    tryCatch(
-      logs$filter_log_events(
-        logGroupName = paste0("/aws/lambda/", tag),
-        startTime = started_at,
-        filterPattern = pattern
-      )$events,
-      error = function(e) list()
-    )
+    logs$filter_log_events(
+      logGroupName = paste0("/aws/lambda/", tag),
+      startTime = started_at,
+      filterPattern = pattern
+    )$events
   }
-  # REPORT is the last line of a finished run, whether it failed or not.
+  # REPORT is the last line of a finished run, whether it failed or not. The
+  # log group may not exist yet, so a failed query means "not yet".
   wait_until(
-    function() length(scheduled_events("REPORT")) > 0,
+    function() {
+      length(tryCatch(scheduled_events("REPORT"), error = function(e) NULL)) > 0
+    },
     "scheduled invocation ran",
     timeout = 240,
     every = 30
