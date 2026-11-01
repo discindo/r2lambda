@@ -101,8 +101,14 @@ parse_password <- function(ecr_token) {
 #' @param std_in path to a file to send to standard input
 #' @param capture logical, return standard output as lines instead of
 #' printing it
+#' @param call the frame to name in errors
 #' @noRd
-docker <- function(args, std_in = NULL, capture = FALSE) {
+docker <- function(
+  args,
+  std_in = NULL,
+  capture = FALSE,
+  call = rlang::caller_env()
+) {
   if (capture) {
     result <- sys::exec_internal("docker", args, std_in = std_in, error = FALSE)
     status <- result$status
@@ -115,7 +121,7 @@ docker <- function(args, std_in = NULL, capture = FALSE) {
       stderr <- trimws(rawToChar(result$stderr))
       msg <- c(msg, "x" = "{stderr}")
     }
-    cli::cli_abort(msg)
+    cli::cli_abort(msg, call = call)
   }
   if (capture) {
     out <- rawToChar(result$stdout)
@@ -337,8 +343,9 @@ create_lambda_dockerfile <-
 #' @param tag a tag for the image
 #' @param create logical, whether to create the repository if it doesn't
 #' exist. When `FALSE`, a missing repository is an error.
+#' @param call the frame to name in errors
 #' @noRd
-fetch_ecr_repo <- function(tag, create = TRUE) {
+fetch_ecr_repo <- function(tag, create = TRUE, call = rlang::caller_env()) {
   logger::log_debug("[fetch_ecr_repo] Checking if repository already exists.")
   ecr_service <- aws_connect("ecr")
 
@@ -356,10 +363,13 @@ fetch_ecr_repo <- function(tag, create = TRUE) {
     logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
     repo_uri <- repos[[1]]$repositoryUri
   } else if (!create) {
-    cli::cli_abort(c(
-      "No ECR repository named {.val {tag}}.",
-      "i" = "Build the image with {.fn build_lambda} first."
-    ))
+    cli::cli_abort(
+      c(
+        "No ECR repository named {.val {tag}}.",
+        "i" = "Build the image with {.fn build_lambda} first."
+      ),
+      call = call
+    )
   } else {
     logger::log_debug(
       "[fetch_ecr_repo] Creating new repository and fetching URI."
@@ -381,20 +391,25 @@ docker_platforms <- c(x86_64 = "linux/amd64", arm64 = "linux/arm64")
 #' Lambda architecture of a local image
 #'
 #' @param image name of a local image
+#' @param call the frame to name in errors
 #' @noRd
-image_architecture <- function(image) {
+image_architecture <- function(image, call = rlang::caller_env()) {
   arch <- docker(
     c("image", "inspect", "--format", "{{.Architecture}}", image),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   lambda_arch <- names(docker_platforms)[
     docker_platforms == paste0("linux/", arch)
   ]
   if (length(lambda_arch) != 1) {
-    cli::cli_abort(c(
-      "Image {.val {image}} is built for {.code {arch}}, which Lambda doesn't support.", # nolint
-      "i" = "Build it for {.val x86_64} or {.val arm64}."
-    ))
+    cli::cli_abort(
+      c(
+        "Image {.val {image}} is built for {.code {arch}}, which Lambda doesn't support.", # nolint
+        "i" = "Build it for {.val x86_64} or {.val arm64}."
+      ),
+      call = call
+    )
   }
   lambda_arch
 }
@@ -403,25 +418,33 @@ image_architecture <- function(image) {
 #'
 #' build_lambda tags the image with its ECR URI, `<registry>/<tag>:latest`.
 #' @param tag the tag given to build_lambda
+#' @param call the frame to name in errors
 #' @noRd
-find_local_image <- function(tag) {
+find_local_image <- function(tag, call = rlang::caller_env()) {
   tags <- docker(
     c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   image <- unique(tags[endsWith(tags, paste0("/", tag, ":latest"))])
 
   if (length(image) == 0) {
-    cli::cli_abort(c(
-      "No image tagged {.code */{tag}:latest} found.",
-      "i" = "Available images: {.val {tags}}."
-    ))
+    msg <- "No image tagged {.code */{tag}:latest} found."
+    if (length(tags) > 0) {
+      # cli shortens long vectors; list every image.
+      tags <- cli::cli_vec(tags, list("vec-trunc" = Inf))
+      msg <- c(msg, "i" = "Available images: {.val {tags}}.")
+    }
+    cli::cli_abort(msg, call = call)
   }
   if (length(image) > 1) {
-    cli::cli_abort(c(
-      "Several images are tagged {.code */{tag}:latest}: {.val {image}}.",
-      "i" = "Remove the ones you don't need."
-    ))
+    cli::cli_abort(
+      c(
+        "Several images are tagged {.code */{tag}:latest}: {.val {image}}.",
+        "i" = "Remove the ones you don't need."
+      ),
+      call = call
+    )
   }
   image
 }
@@ -792,20 +815,22 @@ delete_lambda_exec_roles <- function(tag) {
 #'
 #' @param tag the tag of the image
 #' @return the name of the deleted image, or `NULL` if there is none
+#' @param call the frame to name in errors
 #' @noRd
-delete_local_image <- function(tag) {
+delete_local_image <- function(tag, call = rlang::caller_env()) {
   if (!has_docker()) {
     logger::log_info("[delete_local_image] docker is not installed. Skipping.")
     return(NULL)
   }
   tags <- docker(
     c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   if (!any(endsWith(tags, paste0("/", tag, ":latest")))) {
     return(NULL)
   }
-  image <- find_local_image(tag)
-  docker(c("rmi", image), capture = TRUE)
+  image <- find_local_image(tag, call = call)
+  docker(c("rmi", image), capture = TRUE, call = call)
   image
 }
