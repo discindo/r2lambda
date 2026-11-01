@@ -3,11 +3,15 @@
 # Builds, tests, deploys, invokes and schedules the parity example, then
 # deletes everything with delete_lambda(). It uses the AWS credentials of the
 # current session, takes about 10 minutes, and costs a few cents at most.
-# Docker must be running.
+# Docker must be running. A preflight checks Docker, the AWS credentials and
+# the region, and prints the account, before anything is created.
 #
 # Run from the package root:
 #   Rscript dev/smoke-test.R
 #   ARCH=arm64 Rscript dev/smoke-test.R
+#
+# Before cleanup, the function's CloudWatch logs are saved to
+# dev/<tag>.log (git-ignored).
 #
 # delete_lambda() runs even when a step fails. If the script is killed before
 # it gets there, run delete_lambda() with the tag printed at the start.
@@ -36,8 +40,85 @@ wait_until <- function(condition, what, timeout = 300, every = 10) {
   message("OK: ", what)
 }
 
+# Writes the function's CloudWatch log events to a file before
+# delete_lambda() removes the log group. Never fails, so cleanup still runs.
+save_function_logs <- function(tag, path) {
+  result <- tryCatch(
+    {
+      logs <- aws_connect("cloudwatchlogs")
+      events <- list()
+      token <- NULL
+      repeat {
+        page <- logs$filter_log_events(
+          logGroupName = paste0("/aws/lambda/", tag),
+          nextToken = token
+        )
+        events <- c(events, page$events)
+        token <- page$nextToken
+        if (length(token) == 0 || !nzchar(token)) break
+      }
+      lines <- vapply(
+        events,
+        function(e) {
+          # Format milliseconds by hand: %OS3 truncates them (.123 -> .122).
+          time <- sprintf(
+            "%s.%03dZ",
+            format(
+              .POSIXct(e$timestamp %/% 1000, tz = "UTC"),
+              "%Y-%m-%d %H:%M:%S"
+            ),
+            as.integer(e$timestamp %% 1000)
+          )
+          paste(time, e$logStreamName, trimws(e$message, "right"))
+        },
+        character(1)
+      )
+      writeLines(lines, path)
+      paste(length(lines), "log events saved to", path)
+    },
+    error = function(e) {
+      paste("Could not save function logs:", conditionMessage(e))
+    }
+  )
+  message(result)
+}
+
+# Preflight: fail before anything is created in AWS.
+preflight <- function(what, expr) {
+  tryCatch(expr, error = function(e) {
+    stop("FAILED: ", what, ": ", conditionMessage(e), call. = FALSE)
+  })
+}
+
+docker_info <- preflight("Docker", {
+  sys::exec_internal("docker", "info", error = FALSE)
+})
+check(docker_info$status == 0, "Docker daemon running")
+
+identity <- preflight("AWS credentials", {
+  aws_connect("sts")$get_caller_identity()
+})
+message(
+  "OK: AWS identity ",
+  identity$Arn,
+  " (account ",
+  identity$Account,
+  ")"
+)
+
+ecr_token <- preflight("AWS region and ECR access", {
+  aws_connect("ecr")$get_authorization_token()
+})
+region <- sub(
+  "^.*\\.ecr\\.([^.]+)\\.amazonaws.*$",
+  "\\1",
+  ecr_token$authorizationData[[1]]$proxyEndpoint
+)
+message("OK: AWS region ", region)
+
 local({
   on.exit({
+    save_function_logs(tag, file.path("dev", paste0(tag, ".log")))
     deleted <- delete_lambda(tag)
     str(deleted)
     lambda_gone <- tryCatch(
