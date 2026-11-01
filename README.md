@@ -53,6 +53,12 @@ details on setting credentials, region, profile, etc.
 
 ### Build a docker image for the lambda function
 
+The examples use two files installed with the package:
+`parity.R`, a runtime script whose `parity()` function tells whether a
+number is even or odd, and `renv.lock`, an example lockfile.
+`system.file()` returns their paths. Replace them with your own script
+and lockfile.
+
 ``` r
 runtime_function <- "parity"
 runtime_path <- system.file("parity.R", package = "r2lambda")

@@ -65,3 +65,5 @@ docs
 /.roborev/
 # testthat failure snapshots
 tests/testthat/_problems/
+# smoke test logs
+/dev/*.log
