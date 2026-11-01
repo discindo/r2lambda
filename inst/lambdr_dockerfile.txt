@@ -15,10 +15,10 @@ RUN rpm_file=R-${R_VERSION}-1-1.$(uname -m).rpm \
   && dnf clean all
 
 ENV PATH="${PATH}:/opt/R/${R_VERSION}/bin/"
-# Install binary packages, also when restoring an renv.lock.
-ENV RENV_CONFIG_REPOS_OVERRIDE="https://packagemanager.posit.co/cran/__linux__/rhel9/latest"
+# Posit Package Manager's binary packages for RHEL 9.
+ENV R_REPO="https://packagemanager.posit.co/cran/__linux__/rhel9/latest"
 
-RUN Rscript -e 'install.packages(c("lambdr", "renv"), repos = "https://packagemanager.posit.co/cran/__linux__/rhel9/latest")'
+RUN Rscript -e 'install.packages(c("lambdr", "renv"), repos = Sys.getenv("R_REPO"))'
 
 RUN printf '#!/bin/sh\ncd /lambda\nRscript runtime.R' > /var/runtime/bootstrap \
   && chmod +x /var/runtime/bootstrap

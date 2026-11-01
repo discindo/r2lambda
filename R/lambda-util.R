@@ -46,11 +46,10 @@ aws_connect <- function(service) {
 install_deps_line <- function(deps) {
   checkmate::assert_character(deps)
 
-  repo <- single_quote(
-    "https://packagemanager.posit.co/cran/__linux__/rhel9/latest"
-  )
   glued <- glue_collapse(single_quote(deps), sep = ", ")
-  glue('RUN Rscript -e "install.packages(c({glued}), repos = {repo})"')
+  glue(
+    'RUN Rscript -e "install.packages(c({glued}), repos = Sys.getenv(\'R_REPO\'))"'
+  )
 }
 
 #' system_deps_line
@@ -76,12 +75,29 @@ support_line <- function(support) {
 }
 
 #' renv_line
+#'
+#' Restores from the lockfile's repositories, except that CRAN and Posit
+#' Package Manager are replaced with `R_REPO`, which has binaries for the
+#' image's OS. git is installed for packages restored from a git remote.
 #' @noRd
 renv_line <- function(renvlock_path) {
   checkmate::assert_character(renvlock_path)
-  cmd1 <- glue("COPY {renvlock_path} renv.lock")
-  cmd2 <- "RUN Rscript -e 'renv::restore()'"
-  glue_collapse(c(cmd1, cmd2), sep = "\n")
+  restore <- paste(
+    'repos <- unlist(renv::lockfile_read("renv.lock")$R$Repositories);',
+    'cran <- names(repos) == "CRAN" |',
+    'grepl("packagemanager[.]posit[.]co|p3m[.]dev", repos);',
+    'repos[cran] <- Sys.getenv("R_REPO");',
+    'if (!any(cran)) repos <- c(CRAN = Sys.getenv("R_REPO"), repos);',
+    "renv::restore(repos = repos)"
+  )
+  glue_collapse(
+    c(
+      "RUN dnf -y install git && dnf clean all",
+      glue("COPY {renvlock_path} renv.lock"),
+      glue("RUN Rscript -e '{restore}'")
+    ),
+    sep = "\n"
+  )
 }
 
 #' parse password from ecr token
