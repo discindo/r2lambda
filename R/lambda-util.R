@@ -76,28 +76,40 @@ support_line <- function(support) {
 
 #' renv_line
 #'
-#' Restores from the lockfile's repositories, except that CRAN and Posit
-#' Package Manager are replaced with `R_REPO`, which has binaries for the
-#' image's OS. git is installed for packages restored from a git remote.
+#' Restores from the lockfile's repositories, except that CRAN and the CRAN
+#' repositories of Posit Package Manager are replaced with `R_REPO`, which has
+#' binaries for the image's OS.
+#' @param renvlock_path path of the lockfile in the image's build folder
+#' @param git logical, whether to install git, which renv needs for packages
+#' from a git remote
 #' @noRd
-renv_line <- function(renvlock_path) {
+renv_line <- function(renvlock_path, git = FALSE) {
   checkmate::assert_character(renvlock_path)
+  checkmate::assert_flag(git)
   restore <- paste(
     'repos <- unlist(renv::lockfile_read("renv.lock")$R$Repositories);',
     'cran <- names(repos) == "CRAN" |',
-    'grepl("packagemanager[.]posit[.]co|p3m[.]dev", repos);',
+    'grepl("(packagemanager[.]posit[.]co|p3m[.]dev)/cran/", repos);',
     'repos[cran] <- Sys.getenv("R_REPO");',
     'if (!any(cran)) repos <- c(CRAN = Sys.getenv("R_REPO"), repos);',
     "renv::restore(repos = repos)"
   )
   glue_collapse(
     c(
-      "RUN dnf -y install git && dnf clean all",
+      if (git) "RUN dnf -y install git && dnf clean all",
       glue("COPY {renvlock_path} renv.lock"),
       glue("RUN Rscript -e '{restore}'")
     ),
     sep = "\n"
   )
+}
+
+#' Whether an renv lockfile has packages from a git remote
+#' @param renvlock_path path to the lockfile
+#' @noRd
+lockfile_has_git <- function(renvlock_path) {
+  packages <- jsonlite::fromJSON(renvlock_path, simplifyVector = FALSE)$Packages
+  any(vapply(packages, function(x) identical(x$RemoteType, "git"), TRUE))
 }
 
 #' parse password from ecr token
@@ -330,7 +342,10 @@ create_lambda_dockerfile <-
 
     if (!is.null(renvlock_path)) {
       file.copy(renvlock_path, file.path(folder, "renv.lock"))
-      renv_string <- renv_line("renv.lock")
+      renv_string <- renv_line(
+        "renv.lock",
+        git = lockfile_has_git(renvlock_path)
+      )
       write(renv_string, file = file.path(folder, "Dockerfile"), append = TRUE)
     }
 

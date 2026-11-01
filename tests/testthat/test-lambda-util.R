@@ -54,15 +54,37 @@ test_that("renv_line works", {
   expect_error(renv_line(renvlock = 1))
 
   lines <- strsplit(renv_line("renv.lock"), "\n")[[1]]
+  expect_equal(lines[[1]], "COPY renv.lock renv.lock")
+  expect_match(lines[[2]], "^RUN Rscript -e '[^']+'$")
+
+  lines <- strsplit(renv_line("renv.lock", git = TRUE), "\n")[[1]]
   expect_equal(lines[[1]], "RUN dnf -y install git && dnf clean all")
-  expect_equal(lines[[2]], "COPY renv.lock renv.lock")
-  expect_match(lines[[3]], "^RUN Rscript -e '[^']+'$")
+})
+
+test_that("lockfile_has_git finds packages from a git remote", {
+  lockfile <- withr::local_tempfile(fileext = ".lock")
+  write_lock <- function(packages) {
+    jsonlite::write_json(
+      list(R = list(Version = "4.6.1"), Packages = packages),
+      lockfile,
+      auto_unbox = TRUE
+    )
+  }
+  write_lock(list(glue = list(Package = "glue", Source = "Repository")))
+  expect_false(lockfile_has_git(lockfile))
+  write_lock(list(
+    glue = list(Package = "glue", Source = "Repository"),
+    mypkg = list(Package = "mypkg", RemoteType = "git")
+  ))
+  expect_true(lockfile_has_git(lockfile))
+  write_lock(list())
+  expect_false(lockfile_has_git(lockfile))
 })
 
 test_that("renv_line restores from the lockfile repos with CRAN replaced", {
   skip_if_not_installed("renv")
   restore_code <- function() {
-    line <- strsplit(renv_line("renv.lock"), "\n")[[1]][[3]]
+    line <- strsplit(renv_line("renv.lock"), "\n")[[1]][[2]]
     parse(text = sub("^RUN Rscript -e '(.*)'$", "\\1", line))
   }
   restore_repos <- function(repositories) {
@@ -102,6 +124,14 @@ test_that("renv_line restores from the lockfile repos with CRAN replaced", {
       )
     )),
     c(RSPM = "https://ppm/rhel9")
+  )
+  bioc <- "https://packagemanager.posit.co/bioconductor/packages/3.19/bioc"
+  expect_equal(
+    restore_repos(list(
+      list(Name = "CRAN", URL = "https://cloud.r-project.org"),
+      list(Name = "BioCsoft", URL = bioc)
+    )),
+    c(CRAN = "https://ppm/rhel9", BioCsoft = bioc)
   )
   expect_equal(
     restore_repos(list(list(Name = "ru", URL = "https://x.r-universe.dev"))),
