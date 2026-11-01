@@ -67,7 +67,7 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "Failed to create a folder with Lambda Dockerfile and runtime script." # nolint
+      msg <- "[build_lambda] Failed to create a folder with Lambda Dockerfile and runtime script." # nolint
       logger::log_error(msg)
       rlang::abort(e$message)
     }
@@ -86,7 +86,7 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "Failed to create Lambda Docker image."
+      msg <- "[build_lambda] Failed to create Lambda Docker image."
       logger::log_error(msg)
       rlang::abort(e$message)
     }
@@ -244,7 +244,7 @@ deploy_lambda <-
         push_lambda_image(repo_uri = ecr_image_uri)
       },
       error = function(e) {
-        msg <- "Failed to push Lambda Docker image to AWS ECR."
+        msg <- "[deploy_lambda] Failed to push Lambda Docker image to AWS ECR."
         logger::log_error(msg)
         rlang::abort(e$message)
       }
@@ -264,7 +264,7 @@ deploy_lambda <-
           create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
         },
         error = function(e) {
-          msg <- "Failed to create Lambda execution role in AWS IAM."
+          msg <- "[deploy_lambda] Failed to create Lambda execution role in AWS IAM."
           logger::log_error(msg)
           rlang::abort(e$message)
         }
@@ -293,7 +293,7 @@ deploy_lambda <-
         )
       },
       error = function(e) {
-        msg <- "Failed to create Lambda function."
+        msg <- "[deploy_lambda] Failed to create Lambda function."
         logger::log_error(msg)
         rlang::abort(e$message)
       }
