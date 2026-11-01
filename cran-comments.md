@@ -6,6 +6,8 @@
 
 ## Examples
 
-All examples are wrapped in `\dontrun{}`. They need AWS credentials and a
-running Docker daemon, and most of them create or delete billable AWS resources (ECR
-repositories, IAM roles, Lambda functions and EventBridge schedules).
+The `aws_connect()` example runs. The other examples are wrapped in
+`\dontrun{}`: they need AWS credentials, and they create, invoke or delete
+billable AWS resources (ECR repositories, IAM roles, Lambda functions and
+EventBridge schedules). `build_lambda()`, `test_lambda()`, `deploy_lambda()`
+and `delete_lambda()` also need a running Docker daemon.

@@ -12,8 +12,13 @@ to a deployed `AWS Lambda` function.
 
 ## Requirements
 
-- [docker](https://docs.docker.com/get-docker/) is required to build,
-  tag, and push the image.
+- [docker](https://docs.docker.com/get-docker/) with the
+  [buildx](https://docs.docker.com/build/concepts/overview/#buildx)
+  plugin is required to build, tag, and push the image. Docker Desktop
+  includes buildx; on Linux, some distributions package it separately,
+  e.g. `docker-buildx`.
+- [curl](https://curl.se/) 7.71 or later is required by `test_lambda()`
+  to call the local container.
 - An AWS account. `build_lambda()` already creates the ECR repository
   for the image, and `deploy_lambda()` creates an IAM role and the
   Lambda function.
@@ -151,6 +156,13 @@ expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-r
 ``` r
 schedule_lambda("parity1", "rate(5 minutes)")
 ```
+
+A scheduled run doesn’t take a payload. `{lambdr}` passes the `detail`
+of the EventBridge event to the handler as arguments, and for a schedule
+that is empty, so the handler is called with no arguments. `parity()`
+needs `number`, so each scheduled run of `parity1` fails. Give the
+arguments of a scheduled handler defaults, e.g.
+`parity <- function(number = 2)`.
 
 ### Clean up
 

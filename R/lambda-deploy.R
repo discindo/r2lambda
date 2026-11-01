@@ -116,9 +116,15 @@ build_lambda <- function(
 #' (see `build_lambda`)
 #' @param payload Named list. Arguments to lambda function.
 #'
-#' @return Invisibly, the result of [sys::exec_internal()] for the `curl` call
+#' @return Invisibly, the result of \code{\link[sys:exec_internal]{sys::exec_internal()}} for the `curl` call
 #' to the local container: a list with `status`, and `stdout` and `stderr` as
 #' raw vectors. The response is also printed.
+#'
+#' @details
+#' The container takes a moment to start, so the request is retried when the
+#' connection fails. If a connection drops after the function already ran, the
+#' function runs again, so a function with side effects, such as writing to
+#' S3, can run more than once.
 #'
 #' @examples
 #' \dontrun{
@@ -154,7 +160,7 @@ test_lambda <- function(tag, payload) {
     "--silent",
     "--retry",
     "10",
-    "--retry-connrefused",
+    "--retry-all-errors",
     "--retry-delay",
     "1",
     "-XPOST",

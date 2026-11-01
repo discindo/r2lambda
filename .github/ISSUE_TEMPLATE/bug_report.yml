@@ -35,7 +35,7 @@ body:
         - Interactive use
         - Package examples (including \donttest)
         - Tests
-        - Vignettes
+        - Articles (website)
         - R CMD check / CI
         - CRAN checks
 
