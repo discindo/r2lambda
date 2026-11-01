@@ -14,10 +14,12 @@ Description: Build, test and deploy 'R' scripts as Amazon Web Services
     Images are built and tested locally, pushed to the 'AWS' Elastic
     Container Registry, and deployed with an execution role; deployed
     functions can be invoked, scheduled and deleted from 'R'. Wraps
-    functionality from the 'paws' and 'lambdr' packages.
+    functionality from the 'paws' and 'lambdr' packages. See
+    <https://aws.amazon.com/lambda/> for the 'AWS Lambda' service.
 License: GPL (>= 3)
 Depends: R (>= 4.1.0)
 Encoding: UTF-8
+SystemRequirements: Docker
 Imports: 
     checkmate,
     glue,
