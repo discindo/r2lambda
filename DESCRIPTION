@@ -22,7 +22,7 @@ Encoding: UTF-8
 SystemRequirements: Docker with the buildx plugin, curl
 Imports: 
     checkmate,
-    cli,
+    cli (>= 3.4.0),
     glue,
     jsonlite,
     lambdr,

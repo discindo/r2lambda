@@ -641,6 +641,22 @@ create_lambda_function <-
     invisible(lambda)
   }
 
+#' Shorten a schedule rule or statement name to fit a length limit
+#'
+#' A name that fits is kept as it is. A longer one is cut and ends with a
+#' hash of the full name, so names that differ only after the cut stay
+#' distinct.
+#' @param name character, the full name
+#' @param max_length integer, the longest allowed name
+#' @noRd
+schedule_name <- function(name, max_length) {
+  if (nchar(name) <= max_length) {
+    return(as.character(name))
+  }
+  hash <- substr(cli::hash_md5(name), 1, 8)
+  paste0(substr(name, 1, max_length - nchar(hash) - 1), "_", hash)
+}
+
 #' Create a rule for event schedule
 #'
 #' @param rule_name character, the name of the rule (used later when adding
