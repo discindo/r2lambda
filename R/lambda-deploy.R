@@ -228,7 +228,18 @@ test_lambda <- function(tag, payload) {
 deploy_lambda <-
   function(tag, policy_arns = NULL, role_arn = NULL, ...) {
     error_call <- rlang::current_env()
-    checkmate::assert_string(role_arn, min.chars = 1, null.ok = TRUE)
+    # Check the ARNs here: AWS would reject them only after the slow push.
+    checkmate::assert_string(
+      role_arn,
+      pattern = "^arn:aws[a-z-]*:iam::[0-9]{12}:role/",
+      null.ok = TRUE
+    )
+    checkmate::assert_character(
+      policy_arns,
+      pattern = "^arn:aws[a-z-]*:iam::(aws|[0-9]{12}):policy/",
+      any.missing = FALSE,
+      null.ok = TRUE
+    )
     if (!is.null(role_arn) && !is.null(policy_arns)) {
       cli::cli_abort(c(
         "Use either {.arg role_arn} or {.arg policy_arns}, not both.",
@@ -289,8 +300,12 @@ deploy_lambda <-
       )
       role_arn <- iam_lambda_role$Role$Arn
 
+      policies <- glue_collapse(
+        unique(c(lambda_basic_policy, policy_arns)),
+        ", "
+      )
       logger::log_warn(
-        "[deploy_lambda] Created AWS role with basic lambda execution permissions." # nolint
+        "[deploy_lambda] Created AWS role {role_arn} with policies {policies}."
       )
       logger::log_warn(
         "[deploy_lambda] Use `paws::iam()`, the AWS CLI, or the AWS console to manage your roles, and permissions." # nolint

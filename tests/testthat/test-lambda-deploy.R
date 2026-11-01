@@ -140,6 +140,85 @@ test_that("create_lambda_exec_role attaches the basic and extra policies", {
   expect_error(create_lambda_exec_role("f", policy_arns = ""))
 })
 
+test_that("create_lambda_exec_role deletes the role when a policy fails", {
+  calls <- character()
+  local_mocked_bindings(
+    aws_region = function() "eu-west-1",
+    aws_connect = function(service) {
+      list(
+        create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
+          list(Role = list(Arn = "arn:role"))
+        },
+        attach_role_policy = function(RoleName, PolicyArn) {
+          if (grepl("Missing", PolicyArn)) {
+            stop("NoSuchEntity (HTTP 404). Policy does not exist.")
+          }
+          calls <<- c(calls, "attach")
+        },
+        detach_role_policy = function(RoleName, PolicyArn) {
+          calls <<- c(calls, "detach")
+        },
+        delete_role = function(RoleName) {
+          calls <<- c(calls, "delete_role")
+        }
+      )
+    }
+  )
+  expect_error(
+    create_lambda_exec_role(
+      "f",
+      policy_arns = "arn:aws:iam::aws:policy/Missing"
+    ),
+    "NoSuchEntity"
+  )
+  expect_equal(calls, c("attach", "detach", "delete_role"))
+})
+
+test_that("create_lambda_exec_role keeps the attach error when cleanup fails", {
+  local_mocked_bindings(
+    aws_region = function() "eu-west-1",
+    aws_connect = function(service) {
+      list(
+        create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
+          list(Role = list(Arn = "arn:role"))
+        },
+        attach_role_policy = function(RoleName, PolicyArn) {
+          if (grepl("Missing", PolicyArn)) {
+            stop("NoSuchEntity (HTTP 404). Policy does not exist.")
+          }
+        },
+        detach_role_policy = function(RoleName, PolicyArn) NULL,
+        delete_role = function(RoleName) stop("AccessDenied")
+      )
+    }
+  )
+  expect_warning(
+    expect_error(
+      create_lambda_exec_role(
+        "f",
+        policy_arns = "arn:aws:iam::aws:policy/Missing"
+      ),
+      "NoSuchEntity"
+    ),
+    "delete it by hand"
+  )
+})
+
+test_that("deploy_lambda checks the ARNs before touching AWS", {
+  local_mocked_bindings(
+    fetch_ecr_repo = function(...) stop("should not look up the repository")
+  )
+  expect_error(deploy_lambda("f", role_arn = "my-role"), "role_arn")
+  expect_error(
+    deploy_lambda("f", policy_arns = "AmazonS3FullAccess"),
+    "policy_arns"
+  )
+  expect_error(
+    deploy_lambda("f", policy_arns = c("arn:aws:iam::aws:policy/A", NA)),
+    "policy_arns"
+  )
+})
+
 test_that("deploy_lambda uses an existing role without creating one", {
   used_role <- NULL
   local_mocked_bindings(
@@ -157,14 +236,24 @@ test_that("deploy_lambda uses an existing role without creating one", {
       list(FunctionArn = "arn:fn")
     }
   )
-  result <- deploy_lambda("f", role_arn = "arn:aws:iam::1:role/existing")
-  expect_equal(used_role, "arn:aws:iam::1:role/existing")
-  expect_equal(result$IAM_lambda_role_arn, "arn:aws:iam::1:role/existing")
+  result <- deploy_lambda(
+    "f",
+    role_arn = "arn:aws:iam::123456789012:role/existing"
+  )
+  expect_equal(used_role, "arn:aws:iam::123456789012:role/existing")
+  expect_equal(
+    result$IAM_lambda_role_arn,
+    "arn:aws:iam::123456789012:role/existing"
+  )
 })
 
 test_that("deploy_lambda rejects role_arn together with policy_arns", {
   expect_error(
-    deploy_lambda("f", policy_arns = "arn:p", role_arn = "arn:r"),
+    deploy_lambda(
+      "f",
+      policy_arns = "arn:aws:iam::aws:policy/ReadOnlyAccess",
+      role_arn = "arn:aws:iam::123456789012:role/existing"
+    ),
     "not both"
   )
 })
@@ -182,7 +271,11 @@ test_that("deploy_lambda creates the function for the image architecture", {
       })
     }
   )
-  deploy_lambda("f", role_arn = "arn:aws:iam::1:role/existing", Timeout = 60)
+  deploy_lambda(
+    "f",
+    role_arn = "arn:aws:iam::123456789012:role/existing",
+    Timeout = 60
+  )
   expect_equal(args$Architectures, list("arm64"))
   expect_equal(args$Timeout, 60)
   expect_equal(args$Code$ImageUri, "reg/f:latest")
@@ -227,7 +320,7 @@ test_that("deploy_lambda inspects and pushes the same image", {
     },
     create_lambda_function = function(...) list(FunctionArn = "arn:fn")
   )
-  deploy_lambda("f", role_arn = "arn:aws:iam::1:role/existing")
+  deploy_lambda("f", role_arn = "arn:aws:iam::123456789012:role/existing")
   expect_equal(inspected, "123.dkr.ecr.eu-west-1.amazonaws.com/f:latest")
   expect_equal(pushed, "123.dkr.ecr.eu-west-1.amazonaws.com/f")
 })

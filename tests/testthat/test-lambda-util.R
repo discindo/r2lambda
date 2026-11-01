@@ -335,6 +335,18 @@ test_that("create_lambda_dockerfile rejects unsafe system package names", {
   )
 })
 
+test_that("create_lambda_dockerfile rejects an empty system_deps", {
+  expect_error(
+    create_lambda_dockerfile(
+      folder = withr::local_tempfile(),
+      runtime_function = "parity",
+      runtime_path = system.file("parity.R", package = "r2lambda"),
+      system_deps = character()
+    ),
+    "system_deps"
+  )
+})
+
 test_that("create_lambda_dockerfile copies support folders with their contents", {
   src <- withr::local_tempdir()
   dir.create(file.path(src, "R", "sub"), recursive = TRUE)
