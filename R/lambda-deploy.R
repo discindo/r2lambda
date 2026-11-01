@@ -111,7 +111,7 @@ build_lambda <- function(
 #' (see `build_lambda`)
 #' @param payload Named list. Arguments to lambda function.
 #'
-#' @return Invisibly, the result of [sys::exec_internal()] for the `curl` call
+#' @return Invisibly, the result of \code{\link[sys:exec_internal]{sys::exec_internal()}} for the `curl` call
 #' to the local container: a list with `status`, and `stdout` and `stderr` as
 #' raw vectors. The response is also printed.
 #'

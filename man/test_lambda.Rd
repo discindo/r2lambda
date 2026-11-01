@@ -13,7 +13,7 @@ test_lambda(tag, payload)
 \item{payload}{Named list. Arguments to lambda function.}
 }
 \value{
-Invisibly, the result of [sys::exec_internal()] for the `curl` call
+Invisibly, the result of \code{\link[sys:exec_internal]{sys::exec_internal()}} for the `curl` call
 to the local container: a list with `status`, and `stdout` and `stderr` as
 raw vectors. The response is also printed.
 }
