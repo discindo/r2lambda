@@ -1,9 +1,5 @@
 ---
 title: "AWS Lambda and S3 integration"
-vignette: >
-  %\VignetteIndexEntry{lambda-s3}
-  %\VignetteEngine{quarto::html}
-  %\VignetteEncoding{UTF-8}
 knitr:
   opts_chunk:
     collapse: true

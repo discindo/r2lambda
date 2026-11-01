@@ -1,9 +1,5 @@
 ---
 title: "Set an AWS lambda function to run on a schedule"
-vignette: >
-  %\VignetteIndexEntry{schedule-lambda}
-  %\VignetteEngine{quarto::html}
-  %\VignetteEncoding{UTF-8}
 knitr:
   opts_chunk:
     collapse: true
