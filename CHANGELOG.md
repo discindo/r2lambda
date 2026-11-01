@@ -1,3 +1,25 @@
+## [0.2.0](https://github.com/discindo/r2lambda/compare/v0.1.0...v0.2.0) (2026-11-01)
+
+
+### New features
+
+* add delete_lambda() to remove a function's AWS resources ([#41](https://github.com/discindo/r2lambda/issues/41)) ([13abc85](https://github.com/discindo/r2lambda/commit/13abc855b020902f7f14a916fcd34ce72f7d40d8))
+
+
+### Bug fixes
+
+* keep IAM role names within 64 characters ([#46](https://github.com/discindo/r2lambda/issues/46)) ([f21a0bd](https://github.com/discindo/r2lambda/commit/f21a0bde854faaaf0ed48af2c8dd41cc044a7e18))
+* send EventBridge target ID as a string ([#40](https://github.com/discindo/r2lambda/issues/40)) ([d69201a](https://github.com/discindo/r2lambda/commit/d69201a6c0f43d3e609556c16198e83e84e9cd81))
+
+
+### Documentation
+
+* convert vignettes to Quarto ([#37](https://github.com/discindo/r2lambda/issues/37)) ([2fd68c7](https://github.com/discindo/r2lambda/commit/2fd68c7d1e9506929859dd1596c6b0d48063952c))
+* group articles under a Tutorials heading ([#45](https://github.com/discindo/r2lambda/issues/45)) ([624fbbd](https://github.com/discindo/r2lambda/commit/624fbbd60ec7c0893f2960c33b3ab4a7b34f224b))
+* maintain README.md directly and drop README.Rmd ([#39](https://github.com/discindo/r2lambda/issues/39)) ([3b2ff98](https://github.com/discindo/r2lambda/commit/3b2ff98a52bc36b4f195308ea18a053a29876ccf))
+* meet CRAN extra checks ([#42](https://github.com/discindo/r2lambda/issues/42)) ([4968dbf](https://github.com/discindo/r2lambda/commit/4968dbf65a62545b6cf2ff92a87207ac62df9630))
+* move vignettes to pkgdown-only articles ([#43](https://github.com/discindo/r2lambda/issues/43)) ([c958ce6](https://github.com/discindo/r2lambda/commit/c958ce6538438f136b1961fba66bb21709667929))
+
 ## 0.1.0 (2026-10-12)
 
 
