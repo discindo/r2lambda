@@ -22,6 +22,7 @@ Encoding: UTF-8
 SystemRequirements: Docker
 Imports: 
     checkmate,
+    cli,
     glue,
     jsonlite,
     lambdr,

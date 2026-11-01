@@ -32,11 +32,9 @@ aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
-    msg <- glue(
-      "The service `{service}` does not appear to be available in `paws`."
+    cli::cli_abort(
+      "The service {.val {service}} isn't available in {.pkg paws}."
     )
-    logger::log_error(msg)
-    rlang::abort(msg)
   }
 
   logger::log_debug("[aws_connect] Connecting to AWS.")
@@ -112,12 +110,12 @@ docker <- function(args, std_in = NULL, capture = FALSE) {
     status <- sys::exec_wait("docker", args, std_in = std_in)
   }
   if (status != 0) {
-    msg <- glue("`docker {args[[1]]}` failed with exit status {status}.")
+    msg <- "{.code docker {args[[1]]}} failed with exit status {status}."
     if (capture) {
-      msg <- paste(msg, rawToChar(result$stderr))
+      stderr <- trimws(rawToChar(result$stderr))
+      msg <- c(msg, "x" = "{stderr}")
     }
-    logger::log_error(msg)
-    rlang::abort(msg)
+    cli::cli_abort(msg)
   }
   if (capture) {
     out <- rawToChar(result$stdout)
@@ -182,11 +180,9 @@ create_lambda_dockerfile <-
     )
 
     if (checkmate::test_directory_exists(folder)) {
-      msg <- glue(
-        "[create_lambda_dockerfile] Directory {folder} exists. Please choose another name." # nolint
+      cli::cli_abort(
+        "Directory {.path {folder}} exists. Choose another name."
       )
-      logger::log_error(msg)
-      rlang::abort(msg)
     }
 
     checkmate::assert_character(
@@ -203,11 +199,7 @@ create_lambda_dockerfile <-
     )
 
     if (!checkmate::test_file_exists(runtime_path)) {
-      msg <- glue(
-        "[create_lambda_dockerfile] Can't access runtime script {runtime_path}."
-      )
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort("Can't access runtime script {.path {runtime_path}}.")
     }
 
     checkmate::assert_character(
@@ -217,15 +209,11 @@ create_lambda_dockerfile <-
     )
 
     if (!is.null(support_path)) {
-      lapply(support_path, function(x) {
+      for (x in support_path) {
         if (!file.exists(x)) {
-          msg <- glue(
-            "[create_lambda_dockerfile] Can't access support file or folder {x}."
-          )
-          logger::log_error(msg)
-          rlang::abort(msg)
+          cli::cli_abort("Can't access support file or folder {.path {x}}.")
         }
-      })
+      }
 
       # Support files and folders land next to runtime.R under the names
       # file.copy() gives them, so the names must be distinct and not clash
@@ -233,9 +221,9 @@ create_lambda_dockerfile <-
       support_names <- basename(support_path)
       reserved <- c("runtime.R", "Dockerfile", "renv.lock", "", ".", "..")
       if (anyDuplicated(support_names) || any(support_names %in% reserved)) {
-        msg <- "[create_lambda_dockerfile] Support files and folders need distinct names other than runtime.R, Dockerfile and renv.lock." # nolint
-        logger::log_error(msg)
-        rlang::abort(msg)
+        cli::cli_abort(
+          "Support files and folders need distinct names other than {.file runtime.R}, {.file Dockerfile} and {.file renv.lock}." # nolint
+        )
       }
     }
 
@@ -262,19 +250,15 @@ create_lambda_dockerfile <-
 
     if (!is.null(renvlock_path)) {
       if (!checkmate::test_file_exists(renvlock_path)) {
-        msg <- glue(
-          "[create_lambda_dockerfile] Can't access renv.lock file {renvlock_path}." # nolint
-        )
-        logger::log_error(msg)
-        rlang::abort(msg)
+        cli::cli_abort("Can't access renv.lock file {.path {renvlock_path}}.")
       }
     }
 
     # Can't use both dependencies and renvlock
     if (!is.null(renvlock_path) && !is.null(dependencies)) {
-      msg <- "[create_lambda_dockerfile] Can't use both dependencies and renv."
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort(
+        "Can't use both {.arg dependencies} and {.arg renvlock_path}."
+      )
     }
 
     logger::log_debug(
@@ -372,11 +356,10 @@ fetch_ecr_repo <- function(tag, create = TRUE) {
     logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
     repo_uri <- repos[[1]]$repositoryUri
   } else if (!create) {
-    msg <- glue(
-      "[fetch_ecr_repo] No ECR repository named {tag}. Build the image with build_lambda() first." # nolint
-    )
-    logger::log_error(msg)
-    rlang::abort(msg)
+    cli::cli_abort(c(
+      "No ECR repository named {.val {tag}}.",
+      "i" = "Build the image with {.fn build_lambda} first."
+    ))
   } else {
     logger::log_debug(
       "[fetch_ecr_repo] Creating new repository and fetching URI."
@@ -408,11 +391,10 @@ image_architecture <- function(image) {
     docker_platforms == paste0("linux/", arch)
   ]
   if (length(lambda_arch) != 1) {
-    msg <- glue(
-      "[image_architecture] Image {image} is built for `{glue_collapse(arch, sep = ', ')}`, which Lambda doesn't support. Build it for x86_64 or arm64." # nolint
-    )
-    logger::log_error(msg)
-    rlang::abort(msg)
+    cli::cli_abort(c(
+      "Image {.val {image}} is built for {.code {arch}}, which Lambda doesn't support.", # nolint
+      "i" = "Build it for {.val x86_64} or {.val arm64}."
+    ))
   }
   lambda_arch
 }
@@ -430,17 +412,16 @@ find_local_image <- function(tag) {
   image <- unique(tags[endsWith(tags, paste0("/", tag, ":latest"))])
 
   if (length(image) == 0) {
-    msg <- glue("[find_local_image] No image tagged */{tag}:latest found.")
-    logger::log_error(msg)
-    message("Available images:\n", glue_collapse(sep = "\n", tags))
-    rlang::abort(msg)
+    cli::cli_abort(c(
+      "No image tagged {.code */{tag}:latest} found.",
+      "i" = "Available images: {.val {tags}}."
+    ))
   }
   if (length(image) > 1) {
-    msg <- glue(
-      "[find_local_image] Several images are tagged */{tag}:latest: {glue_collapse(image, sep = ', ')}. Remove the ones you don't need." # nolint
-    )
-    logger::log_error(msg)
-    rlang::abort(msg)
+    cli::cli_abort(c(
+      "Several images are tagged {.code */{tag}:latest}: {.val {image}}.",
+      "i" = "Remove the ones you don't need."
+    ))
   }
   image
 }
@@ -654,18 +635,7 @@ create_event_rule_for_schedule <- function(rule_name, rate) {
 
   aws_event <- aws_connect("eventbridge")
 
-  rule <- tryCatch(
-    expr = {
-      aws_event$put_rule(
-        Name = rule_name,
-        ScheduleExpression = rate
-      )
-    },
-    error = function(e) {
-      logger::log_error(e$message)
-      rlang::abort(e$message)
-    }
-  )
+  rule <- aws_event$put_rule(Name = rule_name, ScheduleExpression = rate)
 
   logger::log_debug("[create_event_rule_for_schedule] Done.")
   return(rule$RuleArn)

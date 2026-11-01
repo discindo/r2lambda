@@ -49,7 +49,7 @@ test_that("schedule_lambda aborts when the function does not exist", {
   )
   expect_error(
     schedule_lambda("missing", "rate(5 minutes)"),
-    "Cannot find deployed lambda function missing"
+    "Can.t find deployed Lambda function \"missing\""
   )
 })
 

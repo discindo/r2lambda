@@ -47,6 +47,7 @@ build_lambda <- function(
   architecture = c("x86_64", "arm64")
 ) {
   architecture <- match.arg(architecture)
+  error_call <- rlang::current_env()
   logger::log_info("[build_lambda] Checking system dependencies.")
   check_system_dependencies()
 
@@ -67,9 +68,11 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "[build_lambda] Failed to create a folder with Lambda Dockerfile and runtime script." # nolint
-      logger::log_error(msg)
-      rlang::abort(e$message)
+      cli::cli_abort(
+        "Failed to create a folder with the Lambda Dockerfile and runtime script.", # nolint
+        parent = e,
+        call = error_call
+      )
     }
   )
   logger::log_warn(
@@ -86,9 +89,11 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "[build_lambda] Failed to create Lambda Docker image."
-      logger::log_error(msg)
-      rlang::abort(e$message)
+      cli::cli_abort(
+        "Failed to build the Lambda Docker image.",
+        parent = e,
+        call = error_call
+      )
     }
   )
   logger::log_warn(
@@ -216,16 +221,19 @@ test_lambda <- function(tag, payload) {
 #' @export
 deploy_lambda <-
   function(tag, policy_arns = NULL, role_arn = NULL, ...) {
+    error_call <- rlang::current_env()
     checkmate::assert_string(role_arn, min.chars = 1, null.ok = TRUE)
     if (!is.null(role_arn) && !is.null(policy_arns)) {
-      msg <- "[deploy_lambda] Use either `role_arn` or `policy_arns`, not both. Attach policies to the existing role instead." # nolint
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort(c(
+        "Use either {.arg role_arn} or {.arg policy_arns}, not both.",
+        "i" = "Attach policies to the existing role instead."
+      ))
     }
     if ("Architectures" %in% names(list(...))) {
-      msg <- "[deploy_lambda] `Architectures` is set from the image. Use `build_lambda(architecture = )` instead." # nolint
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort(c(
+        "{.arg Architectures} is set from the image.",
+        "i" = "Use {.code build_lambda(architecture = )} instead."
+      ))
     }
     ## Other inputs are validated by lower-level functions
 
@@ -244,9 +252,11 @@ deploy_lambda <-
         push_lambda_image(repo_uri = ecr_image_uri)
       },
       error = function(e) {
-        msg <- "[deploy_lambda] Failed to push Lambda Docker image to AWS ECR."
-        logger::log_error(msg)
-        rlang::abort(e$message)
+        cli::cli_abort(
+          "Failed to push the Lambda Docker image to AWS ECR.",
+          parent = e,
+          call = error_call
+        )
       }
     )
 
@@ -264,9 +274,11 @@ deploy_lambda <-
           create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
         },
         error = function(e) {
-          msg <- "[deploy_lambda] Failed to create Lambda execution role in AWS IAM."
-          logger::log_error(msg)
-          rlang::abort(e$message)
+          cli::cli_abort(
+            "Failed to create the Lambda execution role in AWS IAM.",
+            parent = e,
+            call = error_call
+          )
         }
       )
       role_arn <- iam_lambda_role$Role$Arn
@@ -293,9 +305,11 @@ deploy_lambda <-
         )
       },
       error = function(e) {
-        msg <- "[deploy_lambda] Failed to create Lambda function."
-        logger::log_error(msg)
-        rlang::abort(e$message)
+        cli::cli_abort(
+          "Failed to create the Lambda function.",
+          parent = e,
+          call = error_call
+        )
       }
     )
     logger::log_warn(
@@ -362,11 +376,10 @@ invoke_lambda <-
     # An inactive function is invoked anyway: the call reactivates it, and if
     # it fails, the AWS error message says what to do next.
     if (!state %in% c("Active", "Inactive")) {
-      msg <- glue(
-        "[invoke_lambda] Can't invoke the function in state `{state}`. Try again if the state is `Pending`." # nolint
-      )
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort(c(
+        "Can't invoke the function in state {.val {state}}.",
+        "i" = "Try again if the state is {.val Pending}."
+      ))
     }
 
     logger::log_info("[invoke_lambda] Function state: {state}.")
@@ -410,6 +423,7 @@ invoke_lambda <-
 #' @export
 
 schedule_lambda <- function(lambda_function, execution_rate) {
+  error_call <- rlang::current_env()
   logger::log_info("[schedule_lambda] Validating inputs.")
   aws_lambda <- aws_connect("lambda")
   lambda_function_arn <- tryCatch(
@@ -417,11 +431,11 @@ schedule_lambda <- function(lambda_function, execution_rate) {
       FunctionName = lambda_function
     )$Configuration$FunctionArn,
     error = function(e) {
-      msg <- glue(
-        "[schedule_lambda] Cannot find deployed lambda function {lambda_function}"
+      cli::cli_abort(
+        "Can't find deployed Lambda function {.val {lambda_function}}.",
+        parent = e,
+        call = error_call
       )
-      logger::log_error(msg)
-      rlang::abort(msg, parent = e)
     }
   )
   logger::log_info(
@@ -449,8 +463,11 @@ schedule_lambda <- function(lambda_function, execution_rate) {
       )
     },
     error = function(e) {
-      logger::log_error(e$message)
-      rlang::abort(e$message)
+      cli::cli_abort(
+        "Failed to create the schedule rule {.val {rule_name}}.",
+        parent = e,
+        call = error_call
+      )
     }
   )
 
@@ -467,8 +484,11 @@ schedule_lambda <- function(lambda_function, execution_rate) {
       )
     },
     error = function(e) {
-      logger::log_error(e$message)
-      rlang::abort(e$message)
+      cli::cli_abort(
+        "Failed to let the schedule rule {.val {rule_name}} invoke {.val {lambda_function}}.", # nolint
+        parent = e,
+        call = error_call
+      )
     }
   )
 
@@ -483,8 +503,11 @@ schedule_lambda <- function(lambda_function, execution_rate) {
       )
     },
     error = function(e) {
-      logger::log_error(e$message)
-      rlang::abort(e$message)
+      cli::cli_abort(
+        "Failed to add {.val {lambda_function}} to the schedule rule {.val {rule_name}}.", # nolint
+        parent = e,
+        call = error_call
+      )
     }
   )
 

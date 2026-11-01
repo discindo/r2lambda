@@ -17,7 +17,7 @@ test_that("invoke_lambda aborts when the function is not ready", {
   )
   expect_error(
     invoke_lambda("f", "RequestResponse", list(number = 3)),
-    "state `Pending`"
+    "state \"Pending\""
   )
 })
 
@@ -243,5 +243,5 @@ test_that("deploy_lambda looks up the repository without creating it", {
     },
     push_lambda_image = function(repo_uri) stop("should not push")
   )
-  expect_error(deploy_lambda("myrep52"), "No ECR repository named myrep52")
+  expect_error(deploy_lambda("myrep52"), "No ECR repository named \"myrep52\"")
 })
