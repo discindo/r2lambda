@@ -16,6 +16,7 @@ Description: Build, test and deploy 'R' scripts as Amazon Web Services
     functions can be invoked, scheduled and deleted from 'R'. Wraps
     functionality from the 'paws' and 'lambdr' packages.
 License: GPL (>= 3)
+Depends: R (>= 4.1.0)
 Encoding: UTF-8
 Imports: 
     checkmate,
