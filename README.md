@@ -157,6 +157,13 @@ expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-r
 schedule_lambda("parity1", "rate(5 minutes)")
 ```
 
+A scheduled run doesn’t take a payload. `{lambdr}` passes the `detail`
+of the EventBridge event to the handler as arguments, and for a schedule
+that is empty, so the handler is called with no arguments. `parity()`
+needs `number`, so each scheduled run of `parity1` fails. Give the
+arguments of a scheduled handler defaults, e.g.
+`parity <- function(number = 2)`.
+
 ### Clean up
 
 `delete_lambda()` removes what the steps above created: the function
