@@ -27,8 +27,9 @@ CloudWatch log group, and the local Docker image. Resources that don't
 exist are skipped, so it also cleans up after a failed deploy.
 }
 \details{
-Only roles `deploy_lambda()` created for `tag` are deleted. A role passed
-to `deploy_lambda(role_arn = )` is kept. A
+Only roles `deploy_lambda()` created for `tag` in the current region are
+deleted, and only when no Lambda function in the region still uses them. A
+role passed to `deploy_lambda(role_arn = )` is kept. A
 schedule rule that also targets other resources is kept, without this
 function as a target.
 }
