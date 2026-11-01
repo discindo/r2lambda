@@ -25,7 +25,7 @@ the code and deploy it to AWS Lambda, and finally schedule it to run weekly.
 
 As with any AWS service supported by `{paws}`, we can easily connect to S3 and 
 perform some basic operations. Below, we establish an S3 service using `r2lambda::aws_connect`,
-then create a bucket called `tidytuesday-dataset`, drop and then delete and empty file, and 
+then create a bucket called `a-unique-bucket`, drop and then delete an empty file, and 
 delete the bucket altogether. This exercise is not very meaningful beyond learning
 the basics on how to interact with S3 from `R`. Eventually, though, our lambda function
 would need to do something similar, so being familiar with the process in an interactive
@@ -42,7 +42,7 @@ s3_service <- aws_connect("s3")
 s3_service$create_bucket(Bucket = "a-unique-bucket")
 
 # upload an object to our bucket
-tmpfile <- tempfile(pattern = "object_", fileext = "txt")
+tmpfile <- tempfile(pattern = "object_", fileext = ".txt")
 write("test", tmpfile)
 (readLines(tmpfile))
 s3_service$put_object(Body = tmpfile, Bucket = "a-unique-bucket", Key = "TestFile")
@@ -88,8 +88,8 @@ s3_service$delete_bucket(Bucket = "a-unique-bucket")
 
 OK. With that, we now know the two steps our Lambda function would need to do:
 
-  1. fetch the most recent Tidytuesday data set (see 
-  [this post](https://discindo.org/posts/r2lambda/2023-02-24-an-r-aws-lambda-function-to-download-tidytuesday-datasets/) for details)
+  1. fetch the most recent Tidytuesday data set (see the
+  [Tidy Tuesday dataset Lambda](tt-lambda.html) article for details)
   2. put the data set as an object in the S3 bucket
   
 Still in an interactive session, lets just write the code that our Lambda would have
@@ -140,10 +140,9 @@ Now we should have everything we need to write our Lambda function.
 
 # Lambda + S3 integration: Dropping a file in an S3 bucket
 
-Wrapping the above interactive code into a function and also, defining an `s3_connect`
-function as a helper to create an S3 client within the function. By doing this, we
-avoid adding `r2lambda` as a dependency to the Lambda function. (At the time of writing,
-`r2lambda` does not yet support non-CRAN packages.)
+We wrap the above interactive code into a function. Within the function, we create
+the S3 client with `paws::s3()` rather than `r2lambda::aws_connect()`, to avoid adding
+`r2lambda` as a dependency to the Lambda function.
 
 ```{r}
 tidytuesday_lambda_s3 <- function() {
@@ -166,7 +165,7 @@ Tidytuesday data set into our S3 bucket. To test it, we run:
 tidytuesday_lambda_s3()
 
 list_objects <- function(bucket) {
-  s3 <- s3_connect()
+  s3 <- paws::s3()
   obj <- s3$list_objects(Bucket = bucket)
   sapply(obj$Contents, "[[", "Key")
 }
@@ -179,8 +178,8 @@ On to the next step, to create and deploy the Lambda function. We have a few
 considerations here:
 
 1. We have some dependencies that would need to be available in the docker image. 
-We already saw how to install `{tidytuesdayR}` in our Lambda docker image in a 
-[previous post](https://discindo.org/posts/r2lambda/2023-02-24-an-r-aws-lambda-function-to-download-tidytuesday-datasets/).
+We already saw how to install `{tidytuesdayR}` in our Lambda docker image in the
+[Tidy Tuesday dataset Lambda](tt-lambda.html) article.
 Besides this, we also need to install `{paws}`, because without it we can't interact
 with S3. To do this, we just need to add `dependencies = c("tidytuesdayR", "paws")` 
 when building the image with `r2lambda::build_lambda`.
@@ -292,7 +291,6 @@ objs$Contents[[1]]$Key
 ```
 
 We expect to see one object with a `Key` matching the date of the most recent Tuesday.
-At the time of writing that is March 7, 2023.
 
 ## Schedule
 
@@ -300,7 +298,7 @@ Finally, to copy the Tidytuesday dataset on a weekly basis, for example, every W
 we would use `r2lambda::schedule_lambda` with an execution rate set by `cron`.
 
 First, to validate that things are working, we can set the lambda on a 5-minute
-schedule and check the time stamp on the on the S3 object to make sure it is updated
+schedule and check the time stamp on the S3 object to make sure it is updated
 every 5 minutes:
 
 ```{r}
@@ -320,7 +318,7 @@ If all is well, set it to run every Wednesday at midnight:
 ```{r}
 r2lambda::schedule_lambda(
   lambda_function = "tidytuesday_lambda_s3",
-  execution_rate = "cron(0 0 * * Wed *)"
+  execution_rate = "cron(0 0 ? * WED *)"
   )
 ```
 
@@ -342,6 +340,3 @@ for (obj in objs$Contents) {
 }
 s3_service$delete_bucket(Bucket = "tidytuesday-datasets")
 ```
-
-# Lambda + S3 integration: Triggering Lambda when on new file in S3 bucket
-## TODO

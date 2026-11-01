@@ -22,8 +22,8 @@ We start with a simple function that does not require any input and does not ret
 anything. If this example lambda is to run on a schedule, we don't want to worry
 about any input arguments. Also, we want this lambda function to simply have a 
 side-effect, like printing something to the logs, without returning any data or writing
-to a database. This will help us greatly with the setup, in that we'll be able deploy 
-and schedule the lambda with mininal involvement from other AWS services.
+to a database. This will help us greatly with the setup, in that we'll be able to deploy 
+and schedule the lambda with minimal involvement from other AWS services.
 
 With this in mind, we have the following function that simply prints the system time.
 Printing the current time makes sense because we can easily check that the lambda runs
@@ -37,7 +37,7 @@ current_time <- function() {
 
 ## Build, test, and deploy
 
-Here, we follow the procedure described in `Tidy Tuesday dataset Lambda` vignette.
+Here, we follow the procedure described in the [Tidy Tuesday dataset Lambda](tt-lambda.html) article.
 We write this to a file that we'll use to build the lambda `docker` image:
 
 ```{r}
@@ -106,7 +106,7 @@ The function `schedule_lambda` abstracts these three steps in one go. To set a l
 on a schedule, we need the name of the function we wish to update, and the rate at which
 we want EventBridge to invoke it. Two rate-setting expression formats are supported, 
 `cron` and `rate`. For example, to schedule a lambda to run every Sunday at midnight, 
-we could use `execution_rate = "cron(0 0 * * Sun)"`. Alternatively, to schedule a lambda
+we could use `execution_rate = "cron(0 0 ? * SUN *)"`. Alternatively, to schedule a lambda
 to run every 15 minutes, we might use `execution_rate = "rate(15 minutes)"`. The details are
 in this [article](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html)
 
@@ -136,7 +136,7 @@ logs <- logs_service$describe_log_groups()
 (logGroups <- sapply(logs$logGroups, "[[", 1))
 ```
 
-The, we can grab only the data for our scheduled lambda function:
+Then, we can grab only the data for our scheduled lambda function:
 
 ```{r}
 current_time_lambda_logs <- logs_service$filter_log_events(
