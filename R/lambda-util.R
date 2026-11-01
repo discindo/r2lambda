@@ -557,7 +557,8 @@ create_lambda_exec_role <- function(tag, policy_arns = NULL) {
   role <- system.file("lambda-role.json", package = "r2lambda")
   role_string <- lambdr::as_stringified_json(jsonlite::fromJSON(role))
   # IAM caps role names at 64 characters, so a long tag is cut. The role's
-  # path keeps the full tag, which `delete_lambda_exec_roles()` matches on.
+  # path keeps the region and the full tag, which `delete_lambda_exec_roles()`
+  # matches on.
   suffix <- paste0("--", uuid::UUIDgenerate(1))
   role_name <- paste0(substr(tag, 1, 64 - nchar(suffix)), suffix)
 
@@ -759,37 +760,89 @@ remove_lambda_schedules <- function(function_arn) {
   deleted
 }
 
-#' IAM path of the execution roles created for a Lambda function
-#' @param tag the tag of the Lambda function
+#' AWS region of the current session
+#'
+#' Reads the region paws resolved from the environment or the AWS config
+#' file, without calling AWS.
 #' @noRd
-lambda_exec_role_path <- function(tag) {
-  paste0("/r2lambda/", tag, "/")
+aws_region <- function() {
+  region <- aws_connect("lambda")$.internal$config$region
+  if (!rlang::is_string(region) || region == "") {
+    cli::cli_abort(c(
+      "Can't find the AWS region.",
+      "i" = "Set {.envvar AWS_REGION} or a region in the AWS config file."
+    ))
+  }
+  region
+}
+
+#' IAM path of the execution roles created for a Lambda function
+#'
+#' IAM is global, so the path holds the region: deleting a function in one
+#' region must not delete the roles of a function with the same tag in
+#' another.
+#' @param tag the tag of the Lambda function
+#' @param region the AWS region of the function
+#' @noRd
+lambda_exec_role_path <- function(tag, region = aws_region()) {
+  paste0("/r2lambda/", region, "/", tag, "/")
+}
+
+#' Execution roles of the Lambda functions in the current region
+#' @return ARNs of the roles
+#' @noRd
+lambda_function_roles <- function() {
+  lambda_service <- aws_connect("lambda")
+  roles <- character()
+  marker <- NULL
+  repeat {
+    page <- lambda_service$list_functions(Marker = marker)
+    roles <- c(roles, vapply(page$Functions, function(x) x$Role, ""))
+    marker <- page$NextMarker
+    if (length(marker) == 0 || identical(marker, "")) {
+      break
+    }
+  }
+  unique(roles)
 }
 
 #' Delete the execution roles created for a Lambda function
 #'
-#' Deletes only roles on the path `/r2lambda/<tag>/`, where
+#' Deletes only roles on the path `/r2lambda/<region>/<tag>/`, where
 #' `create_lambda_exec_role()` puts them, so a role passed to
-#' `deploy_lambda(role_arn = )` is kept.
+#' `deploy_lambda(role_arn = )` is kept. A role that a Lambda function in the
+#' region still uses is kept too.
 #' @param tag the tag of the Lambda function
 #' @return names of the deleted roles
 #' @noRd
 delete_lambda_exec_roles <- function(tag) {
   iam_service <- aws_connect("iam")
 
-  roles <- character()
+  roles <- list()
   marker <- NULL
   repeat {
     page <- iam_service$list_roles(
       PathPrefix = lambda_exec_role_path(tag),
       Marker = marker
     )
-    roles <- c(roles, vapply(page$Roles, function(x) x$RoleName, ""))
+    roles <- c(roles, page$Roles)
     if (!isTRUE(page$IsTruncated)) {
       break
     }
     marker <- page$Marker
   }
+  if (length(roles) == 0) {
+    return(character())
+  }
+
+  in_use <- vapply(roles, function(x) x$Arn, "") %in% lambda_function_roles()
+  roles <- vapply(roles, function(x) x$RoleName, "")
+  for (role in roles[in_use]) {
+    logger::log_info(
+      "[delete_lambda_exec_roles] Keeping role {role}: a Lambda function still uses it." # nolint
+    )
+  }
+  roles <- roles[!in_use]
 
   for (role in roles) {
     logger::log_debug("[delete_lambda_exec_roles] Deleting role {role}.")
@@ -809,26 +862,38 @@ delete_lambda_exec_roles <- function(tag) {
   roles
 }
 
-#' Delete the local image built for a Lambda function
+#' Delete the local images built for a Lambda function
 #'
+#' Deletes every image tagged `*/<tag>:latest`, e.g. one per registry. It
+#' runs after the AWS resources are deleted, so a docker failure is a warning
+#' instead of an error.
 #' @param tag the tag of the image
-#' @return the name of the deleted image, or `NULL` if there is none
-#' @param call the frame to name in errors
+#' @return the names of the deleted images, or `NULL` if there are none
 #' @noRd
-delete_local_image <- function(tag, call = rlang::caller_env()) {
+delete_local_image <- function(tag) {
   if (!has_docker()) {
     logger::log_info("[delete_local_image] docker is not installed. Skipping.")
     return(NULL)
   }
-  tags <- docker(
-    c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE,
-    call = call
+  tryCatch(
+    {
+      tags <- docker(
+        c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
+        capture = TRUE
+      )
+      images <- unique(tags[endsWith(tags, paste0("/", tag, ":latest"))])
+      if (length(images) == 0) {
+        return(NULL)
+      }
+      docker(c("rmi", images), capture = TRUE)
+      images
+    },
+    error = function(e) {
+      cli::cli_warn(
+        "Failed to delete the local Docker image for {.val {tag}}.",
+        parent = e
+      )
+      NULL
+    }
   )
-  if (!any(endsWith(tags, paste0("/", tag, ":latest")))) {
-    return(NULL)
-  }
-  image <- find_local_image(tag, call = call)
-  docker(c("rmi", image), capture = TRUE, call = call)
-  image
 }

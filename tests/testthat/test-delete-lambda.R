@@ -15,7 +15,10 @@ fake_services <- function(calls, ...) {
       get_function = function(FunctionName) {
         list(Configuration = list(FunctionArn = "arn:fn"))
       },
-      delete_function = record("delete_function")
+      delete_function = record("delete_function"),
+      list_functions = function(...) {
+        list(Functions = list(list(Role = "arn:aws:iam::1:role/other")))
+      }
     ),
     eventbridge = list(
       list_rule_names_by_target = function(...) {
@@ -31,7 +34,8 @@ fake_services <- function(calls, ...) {
       list_roles = function(...) {
         list(
           Roles = list(list(
-            RoleName = "parity--0e4d6c1a-5b2f-4c3d-9e8f-1a2b3c4d5e6f"
+            RoleName = "parity--0e4d6c1a-5b2f-4c3d-9e8f-1a2b3c4d5e6f",
+            Arn = "arn:aws:iam::1:role/r2lambda/eu-west-1/parity/parity--0e4d"
           )),
           IsTruncated = FALSE
         )
@@ -48,6 +52,10 @@ fake_services <- function(calls, ...) {
     cloudwatchlogs = list(delete_log_group = record("delete_log_group"))
   )
   services <- utils::modifyList(defaults, list(...))
+  local_mocked_bindings(
+    aws_region = function() "eu-west-1",
+    .env = parent.frame()
+  )
   function(service) services[[service]]
 }
 
@@ -135,21 +143,35 @@ test_that("delete_lambda passes other AWS errors through", {
   expect_error(delete_lambda("parity"), "AccessDeniedException")
 })
 
-test_that("delete_lambda_exec_roles deletes the roles on the tag's path", {
+test_that("delete_lambda_exec_roles deletes unused roles on the tag's path", {
+  role <- function(name) {
+    list(RoleName = name, Arn = paste0("arn:aws:iam::1:role/", name))
+  }
   pages <- list(
     list(
-      Roles = list(list(RoleName = "parity--a")),
+      Roles = list(role("parity--a"), role("parity--used")),
       IsTruncated = TRUE,
       Marker = "next"
     ),
-    list(Roles = list(list(RoleName = "parity--b")), IsTruncated = FALSE)
+    list(Roles = list(role("parity--b")), IsTruncated = FALSE)
+  )
+  function_pages <- list(
+    list(
+      Functions = list(list(Role = "arn:aws:iam::1:role/other")),
+      NextMarker = "next"
+    ),
+    list(Functions = list(list(Role = "arn:aws:iam::1:role/parity--used")))
   )
   deleted_roles <- character()
   local_mocked_bindings(
+    aws_region = function() "eu-west-1",
     aws_connect = function(service) {
       list(
+        list_functions = function(Marker = NULL) {
+          if (is.null(Marker)) function_pages[[1]] else function_pages[[2]]
+        },
         list_roles = function(PathPrefix, Marker = NULL) {
-          expect_equal(PathPrefix, "/r2lambda/parity/")
+          expect_equal(PathPrefix, "/r2lambda/eu-west-1/parity/")
           if (is.null(Marker)) pages[[1]] else pages[[2]]
         },
         list_attached_role_policies = function(RoleName) list(),
@@ -169,6 +191,36 @@ test_that("delete_lambda_exec_roles deletes the roles on the tag's path", {
   expected <- c("parity--a", "parity--b")
   expect_equal(delete_lambda_exec_roles("parity"), expected)
   expect_equal(deleted_roles, expected)
+})
+
+test_that("delete_local_image removes every image for the tag", {
+  removed <- NULL
+  local_mocked_bindings(
+    has_docker = function() TRUE,
+    docker = function(args, ...) {
+      if (args[[1]] == "rmi") {
+        removed <<- args[-1]
+        return(character())
+      }
+      c("a/parity:latest", "b/parity:latest", "a/other:latest")
+    }
+  )
+  expect_equal(
+    delete_local_image("parity"),
+    c("a/parity:latest", "b/parity:latest")
+  )
+  expect_equal(removed, c("a/parity:latest", "b/parity:latest"))
+})
+
+test_that("delete_local_image warns instead of failing when docker fails", {
+  local_mocked_bindings(
+    has_docker = function() TRUE,
+    docker = function(args, ...) stop("Cannot connect to the Docker daemon")
+  )
+  expect_warning(
+    expect_null(delete_local_image("parity")),
+    "Failed to delete the local Docker image"
+  )
 })
 
 test_that("remove_lambda_schedules keeps rules with other targets", {

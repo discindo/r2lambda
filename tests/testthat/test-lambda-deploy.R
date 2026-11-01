@@ -96,6 +96,7 @@ test_that("retry_until_role_ready retries only while the role is not ready", {
 test_that("create_lambda_exec_role fits long tags in the role name", {
   created <- NULL
   local_mocked_bindings(
+    aws_region = function() "eu-west-1",
     aws_connect = function(service) {
       list(
         create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
@@ -108,7 +109,7 @@ test_that("create_lambda_exec_role fits long tags in the role name", {
   )
   tag <- strrep("a", 64)
   create_lambda_exec_role(tag)
-  expect_equal(created$path, paste0("/r2lambda/", tag, "/"))
+  expect_equal(created$path, paste0("/r2lambda/eu-west-1/", tag, "/"))
   expect_equal(nchar(created$name), 64)
   expect_match(created$name, "^a{26}--[0-9a-f-]{36}$")
 })

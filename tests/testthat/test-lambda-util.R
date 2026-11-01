@@ -372,3 +372,19 @@ test_that("create_lambda_dockerfile rejects support paths without a name", {
     "distinct names"
   )
 })
+
+test_that("aws_region reads the region from the paws config", {
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(.internal = list(config = list(region = "eu-west-1")))
+    }
+  )
+  expect_equal(aws_region(), "eu-west-1")
+
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(.internal = list(config = list(region = "")))
+    }
+  )
+  expect_error(aws_region(), "Can't find the AWS region")
+})
