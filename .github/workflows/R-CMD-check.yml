@@ -58,10 +58,7 @@ jobs:
       matrix:
         config:
           - { os: macos-latest, r: "release" }
-          # quarto can't load the package while R CMD build renders vignettes
-          # on Windows, so vignettes are neither built nor checked there. The
-          # other platforms check them.
-          - { os: windows-latest, r: "release", build-args: 'c("--no-manual", "--no-build-vignettes")', check-args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")' }
+          - { os: windows-latest, r: "release" }
           - { os: ubuntu-latest, r: "devel", http-user-agent: "release" }
           - { os: ubuntu-latest, r: "release" }
           - { os: ubuntu-latest, r: "oldrel-1" }
@@ -94,5 +91,3 @@ jobs:
         with:
           error-on: '"error"'
           upload-snapshots: true
-          build_args: ${{ matrix.config.build-args || '"--no-manual"' }}
-          args: ${{ matrix.config.check-args || 'c("--no-manual", "--as-cran")' }}

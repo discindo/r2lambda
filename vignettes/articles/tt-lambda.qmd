@@ -1,9 +1,5 @@
 ---
 title: "Tidy Tuesday dataset Lambda"
-vignette: >
-  %\VignetteIndexEntry{tt-lambda}
-  %\VignetteEngine{quarto::html}
-  %\VignetteEncoding{UTF-8}
 knitr:
   opts_chunk:
     collapse: true
@@ -14,14 +10,12 @@ knitr:
 ```{r}
 #| label: setup
 library(r2lambda)
-library(jsonlite)
-library(magrittr)
 ```
 
 ## Use `{r2lambda}` to download Tidytuesday dataset
 
-In this exercize, we'll create an AWS Lambda function that downloads
-the [tidytuesday](https://github.com/rfordatascience/tidytuesday/tree/master/data/2023/2023-02-07) 
+In this exercise, we'll create an AWS Lambda function that downloads
+the [tidytuesday](https://github.com/rfordatascience/tidytuesday) 
 data set for the most recent Tuesday (or most recent Tuesday from a date of interest).
 
 ## Runtime function
@@ -29,7 +23,7 @@ data set for the most recent Tuesday (or most recent Tuesday from a date of inte
 The first step is to write the runtime function. This is the function that will be
 executed when we invoke the Lambda function after it has been deployed. To download 
 the Tidytuesday data set, we will use the `{tidytuesdayR}` package. In the runtime 
-script, we define a function called `tidytyesday_lambda` that takes one optional 
+script, we define a function called `tidytuesday_lambda` that takes one optional 
 argument `date`. If `date` is omitted, the function returns the data set(s) for the most 
 recent Tuesday, otherwise, it looks up the most recent Tuesday from a date of interest 
 and returns the corresponding data set(s).
@@ -93,9 +87,9 @@ This adds a `CMD` instruction to the `Dockerfile`
 - We set the `runtime_path` argument to the path we stored the script defining our
 runtime function.
 
-- We set the `dependencies` argument to `c("tidytuesdayR")`because we need to 
+- We set the `dependencies` argument to `c("tidytuesdayR")` because we need to 
 have the `tidytuesdayR` package installed within the `docker` container if we are
-to download the dataset. This steps adds a `RUN` instruction to the `Dockerfile`
+to download the dataset. This step adds a `RUN` instruction to the `Dockerfile`
 that calls `install.packages` to install `{tidytuesdayR}` from CRAN.
 
 - Finally, the `tag` argument sets the name of our Lambda function which we'll use 
@@ -143,9 +137,9 @@ we are good to deploy to AWS.
 
 The deploy step is simple, in that all we need to do is specify the name (tag) of 
 the Lambda function we wish to push to AWS ECR. The `deploy_lambda` function also
-accepts `...`, which are named arguments ultimately passed onto 
-`paws.compute:::lambda_create_function`. This is the function that calls the Lambda
-API. To see all available arguments run `?paws.compute:::lambda_create_function`.
+accepts `...`, which are named arguments passed onto
+`paws::lambda()$create_function()`. This is the function that calls the Lambda
+API. To see all available arguments run `?paws.compute::lambda_create_function`.
 
 The most important arguments are probably `Timeout` and `MemorySize`, which set 
 the time our function will be allowed to run and the amount of memory it will have
@@ -163,11 +157,11 @@ We can invoke it from `R` using `invoke_lambda`. The arguments are:
 
 - `function_name` -- the name of the function
 - `invocation_type` -- typically `RequestResponse`
-- `include_log` -- whether to print the logs of the run on the console
+- `include_logs` -- whether to print the logs of the run on the console
 - `payload` -- a named list with arguments sent to the `runtime_function`. In this
 case, the runtime function, `tidytuesday_lambda` has a single argument `date`, so
 the corresponding list is `list(date = Sys.Date())`. As our function can be called
-without any argument, we can also send and empty list as the payload.
+without any argument, we can also send an empty list as the payload.
 
 ```{r}
 response <- r2lambda::invoke_lambda(
