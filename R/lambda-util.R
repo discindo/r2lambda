@@ -109,7 +109,12 @@ renv_line <- function(renvlock_path, git = FALSE) {
 #' @noRd
 lockfile_has_git <- function(renvlock_path) {
   packages <- jsonlite::fromJSON(renvlock_path, simplifyVector = FALSE)$Packages
-  any(vapply(packages, function(x) identical(x$RemoteType, "git"), TRUE))
+  # renv treats the xgit and git2r remote types as git too.
+  is_git <- function(x) {
+    identical(x$Source, "git") ||
+      isTRUE(x$RemoteType %in% c("git", "xgit", "git2r"))
+  }
+  any(vapply(packages, is_git, TRUE))
 }
 
 #' parse password from ecr token
