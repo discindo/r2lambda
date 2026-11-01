@@ -191,11 +191,20 @@ local({
   logs <- aws_connect("cloudwatchlogs")
   started_at <- as.numeric(Sys.time()) * 1000
   scheduled_events <- function(pattern) {
-    logs$filter_log_events(
-      logGroupName = paste0("/aws/lambda/", tag),
-      startTime = started_at,
-      filterPattern = pattern
-    )$events
+    events <- list()
+    token <- NULL
+    repeat {
+      page <- logs$filter_log_events(
+        logGroupName = paste0("/aws/lambda/", tag),
+        startTime = started_at,
+        filterPattern = pattern,
+        nextToken = token
+      )
+      events <- c(events, page$events)
+      token <- page$nextToken
+      if (length(token) == 0 || !nzchar(token)) break
+    }
+    events
   }
   # REPORT is the last line of a finished run, whether it failed or not. The
   # log group may not exist yet, so a failed query means "not yet".
