@@ -49,7 +49,7 @@ test_that("schedule_lambda aborts when the function does not exist", {
   )
   expect_error(
     schedule_lambda("missing", "rate(5 minutes)"),
-    "Cannot find deployed lambda function missing"
+    "Can.t find deployed Lambda function \"missing\""
   )
 })
 
@@ -100,7 +100,7 @@ test_that("add_lambda_to_eventridge sends the target ID as a string", {
 test_that("test_lambda finds the image by tag and removes the container", {
   calls <- list()
   local_mocked_bindings(
-    docker = function(args, std_in = NULL, capture = FALSE) {
+    docker = function(args, std_in = NULL, capture = FALSE, ...) {
       calls[[length(calls) + 1]] <<- args
       if (args[[1]] == "image") {
         c("reg.example/parity:latest", "<none>:<none>")
@@ -118,7 +118,15 @@ test_that("test_lambda finds the image by tag and removes the container", {
   expect_equal(commands, c("image", "run", "rm"))
   expect_true("reg.example/parity:latest" %in% calls[[2]])
 
-  expect_error(test_lambda("other", list()), "No image tagged")
+  err <- expect_error(test_lambda("other", list()), "No image tagged")
+  expect_equal(err$call[[1]], quote(test_lambda))
+  expect_match(conditionMessage(err), "Available images")
+})
+
+test_that("find_local_image lists no images when there are none", {
+  local_mocked_bindings(docker = function(args, ...) character())
+  err <- expect_error(find_local_image("parity"), "No image tagged")
+  expect_no_match(conditionMessage(err), "Available images")
 })
 
 test_that("docker reports failures with the command and its error", {

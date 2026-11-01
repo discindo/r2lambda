@@ -32,11 +32,9 @@ aws_connect <- function(service) {
   logger::log_debug("[aws_connect] Checking requested service.")
 
   if (!service %in% getNamespaceExports("paws")) {
-    msg <- glue(
-      "The service `{service}` does not appear to be available in `paws`."
+    cli::cli_abort(
+      "The service {.val {service}} isn't available in {.pkg paws}."
     )
-    logger::log_error(msg)
-    rlang::abort(msg)
   }
 
   logger::log_debug("[aws_connect] Connecting to AWS.")
@@ -103,8 +101,14 @@ parse_password <- function(ecr_token) {
 #' @param std_in path to a file to send to standard input
 #' @param capture logical, return standard output as lines instead of
 #' printing it
+#' @param call the frame to name in errors
 #' @noRd
-docker <- function(args, std_in = NULL, capture = FALSE) {
+docker <- function(
+  args,
+  std_in = NULL,
+  capture = FALSE,
+  call = rlang::caller_env()
+) {
   if (capture) {
     result <- sys::exec_internal("docker", args, std_in = std_in, error = FALSE)
     status <- result$status
@@ -112,12 +116,12 @@ docker <- function(args, std_in = NULL, capture = FALSE) {
     status <- sys::exec_wait("docker", args, std_in = std_in)
   }
   if (status != 0) {
-    msg <- glue("`docker {args[[1]]}` failed with exit status {status}.")
+    msg <- "{.code docker {args[[1]]}} failed with exit status {status}."
     if (capture) {
-      msg <- paste(msg, rawToChar(result$stderr))
+      stderr <- trimws(rawToChar(result$stderr))
+      msg <- c(msg, "x" = "{stderr}")
     }
-    logger::log_error(msg)
-    rlang::abort(msg)
+    cli::cli_abort(msg, call = call)
   }
   if (capture) {
     out <- rawToChar(result$stdout)
@@ -182,11 +186,9 @@ create_lambda_dockerfile <-
     )
 
     if (checkmate::test_directory_exists(folder)) {
-      msg <- glue(
-        "[create_lambda_dockerfile] Directory {folder} exists. Please choose another name." # nolint
+      cli::cli_abort(
+        "Directory {.path {folder}} exists. Choose another name."
       )
-      logger::log_error(msg)
-      rlang::abort(msg)
     }
 
     checkmate::assert_character(
@@ -203,11 +205,7 @@ create_lambda_dockerfile <-
     )
 
     if (!checkmate::test_file_exists(runtime_path)) {
-      msg <- glue(
-        "[create_lambda_dockerfile] Can't access runtime script {runtime_path}."
-      )
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort("Can't access runtime script {.path {runtime_path}}.")
     }
 
     checkmate::assert_character(
@@ -217,15 +215,11 @@ create_lambda_dockerfile <-
     )
 
     if (!is.null(support_path)) {
-      lapply(support_path, function(x) {
+      for (x in support_path) {
         if (!file.exists(x)) {
-          msg <- glue(
-            "[create_lambda_dockerfile] Can't access support file or folder {x}."
-          )
-          logger::log_error(msg)
-          rlang::abort(msg)
+          cli::cli_abort("Can't access support file or folder {.path {x}}.")
         }
-      })
+      }
 
       # Support files and folders land next to runtime.R under the names
       # file.copy() gives them, so the names must be distinct and not clash
@@ -233,9 +227,9 @@ create_lambda_dockerfile <-
       support_names <- basename(support_path)
       reserved <- c("runtime.R", "Dockerfile", "renv.lock", "", ".", "..")
       if (anyDuplicated(support_names) || any(support_names %in% reserved)) {
-        msg <- "[create_lambda_dockerfile] Support files and folders need distinct names other than runtime.R, Dockerfile and renv.lock." # nolint
-        logger::log_error(msg)
-        rlang::abort(msg)
+        cli::cli_abort(
+          "Support files and folders need distinct names other than {.file runtime.R}, {.file Dockerfile} and {.file renv.lock}." # nolint
+        )
       }
     }
 
@@ -262,19 +256,15 @@ create_lambda_dockerfile <-
 
     if (!is.null(renvlock_path)) {
       if (!checkmate::test_file_exists(renvlock_path)) {
-        msg <- glue(
-          "[create_lambda_dockerfile] Can't access renv.lock file {renvlock_path}." # nolint
-        )
-        logger::log_error(msg)
-        rlang::abort(msg)
+        cli::cli_abort("Can't access renv.lock file {.path {renvlock_path}}.")
       }
     }
 
     # Can't use both dependencies and renvlock
     if (!is.null(renvlock_path) && !is.null(dependencies)) {
-      msg <- "[create_lambda_dockerfile] Can't use both dependencies and renv."
-      logger::log_error(msg)
-      rlang::abort(msg)
+      cli::cli_abort(
+        "Can't use both {.arg dependencies} and {.arg renvlock_path}."
+      )
     }
 
     logger::log_debug(
@@ -353,8 +343,9 @@ create_lambda_dockerfile <-
 #' @param tag a tag for the image
 #' @param create logical, whether to create the repository if it doesn't
 #' exist. When `FALSE`, a missing repository is an error.
+#' @param call the frame to name in errors
 #' @noRd
-fetch_ecr_repo <- function(tag, create = TRUE) {
+fetch_ecr_repo <- function(tag, create = TRUE, call = rlang::caller_env()) {
   logger::log_debug("[fetch_ecr_repo] Checking if repository already exists.")
   ecr_service <- aws_connect("ecr")
 
@@ -372,11 +363,13 @@ fetch_ecr_repo <- function(tag, create = TRUE) {
     logger::log_debug("[fetch_ecr_repo] Repository exists. Fetching URI.")
     repo_uri <- repos[[1]]$repositoryUri
   } else if (!create) {
-    msg <- glue(
-      "[fetch_ecr_repo] No ECR repository named {tag}. Build the image with build_lambda() first." # nolint
+    cli::cli_abort(
+      c(
+        "No ECR repository named {.val {tag}}.",
+        "i" = "Build the image with {.fn build_lambda} first."
+      ),
+      call = call
     )
-    logger::log_error(msg)
-    rlang::abort(msg)
   } else {
     logger::log_debug(
       "[fetch_ecr_repo] Creating new repository and fetching URI."
@@ -398,21 +391,25 @@ docker_platforms <- c(x86_64 = "linux/amd64", arm64 = "linux/arm64")
 #' Lambda architecture of a local image
 #'
 #' @param image name of a local image
+#' @param call the frame to name in errors
 #' @noRd
-image_architecture <- function(image) {
+image_architecture <- function(image, call = rlang::caller_env()) {
   arch <- docker(
     c("image", "inspect", "--format", "{{.Architecture}}", image),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   lambda_arch <- names(docker_platforms)[
     docker_platforms == paste0("linux/", arch)
   ]
   if (length(lambda_arch) != 1) {
-    msg <- glue(
-      "[image_architecture] Image {image} is built for `{glue_collapse(arch, sep = ', ')}`, which Lambda doesn't support. Build it for x86_64 or arm64." # nolint
+    cli::cli_abort(
+      c(
+        "Image {.val {image}} is built for {.code {arch}}, which Lambda doesn't support.", # nolint
+        "i" = "Build it for {.val x86_64} or {.val arm64}."
+      ),
+      call = call
     )
-    logger::log_error(msg)
-    rlang::abort(msg)
   }
   lambda_arch
 }
@@ -421,26 +418,33 @@ image_architecture <- function(image) {
 #'
 #' build_lambda tags the image with its ECR URI, `<registry>/<tag>:latest`.
 #' @param tag the tag given to build_lambda
+#' @param call the frame to name in errors
 #' @noRd
-find_local_image <- function(tag) {
+find_local_image <- function(tag, call = rlang::caller_env()) {
   tags <- docker(
     c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   image <- unique(tags[endsWith(tags, paste0("/", tag, ":latest"))])
 
   if (length(image) == 0) {
-    msg <- glue("[find_local_image] No image tagged */{tag}:latest found.")
-    logger::log_error(msg)
-    message("Available images:\n", glue_collapse(sep = "\n", tags))
-    rlang::abort(msg)
+    msg <- "No image tagged {.code */{tag}:latest} found."
+    if (length(tags) > 0) {
+      # cli shortens long vectors; list every image.
+      tags <- cli::cli_vec(tags, list("vec-trunc" = Inf))
+      msg <- c(msg, "i" = "Available images: {.val {tags}}.")
+    }
+    cli::cli_abort(msg, call = call)
   }
   if (length(image) > 1) {
-    msg <- glue(
-      "[find_local_image] Several images are tagged */{tag}:latest: {glue_collapse(image, sep = ', ')}. Remove the ones you don't need." # nolint
+    cli::cli_abort(
+      c(
+        "Several images are tagged {.code */{tag}:latest}: {.val {image}}.",
+        "i" = "Remove the ones you don't need."
+      ),
+      call = call
     )
-    logger::log_error(msg)
-    rlang::abort(msg)
   }
   image
 }
@@ -654,18 +658,7 @@ create_event_rule_for_schedule <- function(rule_name, rate) {
 
   aws_event <- aws_connect("eventbridge")
 
-  rule <- tryCatch(
-    expr = {
-      aws_event$put_rule(
-        Name = rule_name,
-        ScheduleExpression = rate
-      )
-    },
-    error = function(e) {
-      logger::log_error(e$message)
-      rlang::abort(e$message)
-    }
-  )
+  rule <- aws_event$put_rule(Name = rule_name, ScheduleExpression = rate)
 
   logger::log_debug("[create_event_rule_for_schedule] Done.")
   return(rule$RuleArn)
@@ -822,20 +815,22 @@ delete_lambda_exec_roles <- function(tag) {
 #'
 #' @param tag the tag of the image
 #' @return the name of the deleted image, or `NULL` if there is none
+#' @param call the frame to name in errors
 #' @noRd
-delete_local_image <- function(tag) {
+delete_local_image <- function(tag, call = rlang::caller_env()) {
   if (!has_docker()) {
     logger::log_info("[delete_local_image] docker is not installed. Skipping.")
     return(NULL)
   }
   tags <- docker(
     c("image", "ls", "--format", "{{.Repository}}:{{.Tag}}"),
-    capture = TRUE
+    capture = TRUE,
+    call = call
   )
   if (!any(endsWith(tags, paste0("/", tag, ":latest")))) {
     return(NULL)
   }
-  image <- find_local_image(tag)
-  docker(c("rmi", image), capture = TRUE)
+  image <- find_local_image(tag, call = call)
+  docker(c("rmi", image), capture = TRUE, call = call)
   image
 }
