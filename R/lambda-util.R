@@ -554,11 +554,15 @@ create_lambda_exec_role <- function(tag, policy_arns = NULL) {
   logger::log_debug("[create_lambda_exec_role] Getting Lambda role json.")
   role <- system.file("lambda-role.json", package = "r2lambda")
   role_string <- lambdr::as_stringified_json(jsonlite::fromJSON(role))
-  role_name <- paste(tag, uuid::UUIDgenerate(1), sep = "--")
+  # IAM caps role names at 64 characters, so a long tag is cut. The role's
+  # path keeps the full tag, which `delete_lambda_exec_roles()` matches on.
+  suffix <- paste0("--", uuid::UUIDgenerate(1))
+  role_name <- paste0(substr(tag, 1, 64 - nchar(suffix)), suffix)
 
   logger::log_debug("[create_lambda_exec_role] Creating Lambda execution role.")
   iam_service <- aws_connect("iam")
   role_meta <- iam_service$create_role(
+    Path = lambda_exec_role_path(tag),
     RoleName = role_name,
     AssumeRolePolicyDocument = role_string
   )
@@ -764,10 +768,18 @@ remove_lambda_schedules <- function(function_arn) {
   deleted
 }
 
+#' IAM path of the execution roles created for a Lambda function
+#' @param tag the tag of the Lambda function
+#' @noRd
+lambda_exec_role_path <- function(tag) {
+  paste0("/r2lambda/", tag, "/")
+}
+
 #' Delete the execution roles created for a Lambda function
 #'
-#' Deletes only roles named `<tag>--<uuid>`, as `create_lambda_exec_role()`
-#' names them, so a role passed to `deploy_lambda(role_arn = )` is kept.
+#' Deletes only roles on the path `/r2lambda/<tag>/`, where
+#' `create_lambda_exec_role()` puts them, so a role passed to
+#' `deploy_lambda(role_arn = )` is kept.
 #' @param tag the tag of the Lambda function
 #' @return names of the deleted roles
 #' @noRd
@@ -777,17 +789,16 @@ delete_lambda_exec_roles <- function(tag) {
   roles <- character()
   marker <- NULL
   repeat {
-    page <- iam_service$list_roles(Marker = marker)
+    page <- iam_service$list_roles(
+      PathPrefix = lambda_exec_role_path(tag),
+      Marker = marker
+    )
     roles <- c(roles, vapply(page$Roles, function(x) x$RoleName, ""))
     if (!isTRUE(page$IsTruncated)) {
       break
     }
     marker <- page$Marker
   }
-
-  prefix <- paste0(tag, "--")
-  suffix <- substring(roles, nchar(prefix) + 1)
-  roles <- roles[startsWith(roles, prefix) & grepl("^[0-9a-f-]{36}$", suffix)]
 
   for (role in roles) {
     logger::log_debug("[delete_lambda_exec_roles] Deleting role {role}.")

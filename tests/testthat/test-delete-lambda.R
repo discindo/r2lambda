@@ -135,31 +135,21 @@ test_that("delete_lambda passes other AWS errors through", {
   expect_error(delete_lambda("parity"), "AccessDeniedException")
 })
 
-test_that("delete_lambda_exec_roles deletes only roles deploy_lambda created", {
-  uuid <- "0e4d6c1a-5b2f-4c3d-9e8f-1a2b3c4d5e6f"
+test_that("delete_lambda_exec_roles deletes the roles on the tag's path", {
   pages <- list(
     list(
-      Roles = list(
-        list(RoleName = paste0("parity--", uuid)),
-        list(RoleName = "parity--my-own-role")
-      ),
+      Roles = list(list(RoleName = "parity--a")),
       IsTruncated = TRUE,
       Marker = "next"
     ),
-    list(
-      Roles = list(
-        list(RoleName = paste0("parity.x--", uuid)),
-        list(RoleName = paste0("other--", uuid)),
-        list(RoleName = paste0("parity--", sub("^0", "1", uuid)))
-      ),
-      IsTruncated = FALSE
-    )
+    list(Roles = list(list(RoleName = "parity--b")), IsTruncated = FALSE)
   )
   deleted_roles <- character()
   local_mocked_bindings(
     aws_connect = function(service) {
       list(
-        list_roles = function(Marker = NULL) {
+        list_roles = function(PathPrefix, Marker = NULL) {
+          expect_equal(PathPrefix, "/r2lambda/parity/")
           if (is.null(Marker)) pages[[1]] else pages[[2]]
         },
         list_attached_role_policies = function(RoleName) list(),
@@ -176,10 +166,7 @@ test_that("delete_lambda_exec_roles deletes only roles deploy_lambda created", {
     }
   )
 
-  expected <- c(
-    paste0("parity--", uuid),
-    paste0("parity--", sub("^0", "1", uuid))
-  )
+  expected <- c("parity--a", "parity--b")
   expect_equal(delete_lambda_exec_roles("parity"), expected)
   expect_equal(deleted_roles, expected)
 })

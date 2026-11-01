@@ -93,12 +93,32 @@ test_that("retry_until_role_ready retries only while the role is not ready", {
   expect_error(retry_until_role_ready(h, tries = 2, wait = 0), "assumed")
 })
 
+test_that("create_lambda_exec_role fits long tags in the role name", {
+  created <- NULL
+  local_mocked_bindings(
+    aws_connect = function(service) {
+      list(
+        create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
+          created <<- list(path = Path, name = RoleName)
+          list(Role = list(Arn = "arn:role"))
+        },
+        attach_role_policy = function(RoleName, PolicyArn) NULL
+      )
+    }
+  )
+  tag <- strrep("a", 64)
+  create_lambda_exec_role(tag)
+  expect_equal(created$path, paste0("/r2lambda/", tag, "/"))
+  expect_equal(nchar(created$name), 64)
+  expect_match(created$name, "^a{26}--[0-9a-f-]{36}$")
+})
+
 test_that("create_lambda_exec_role attaches the basic and extra policies", {
   attached <- character()
   local_mocked_bindings(
     aws_connect = function(service) {
       list(
-        create_role = function(RoleName, AssumeRolePolicyDocument) {
+        create_role = function(Path, RoleName, AssumeRolePolicyDocument) {
           list(Role = list(Arn = "arn:role"))
         },
         attach_role_policy = function(RoleName, PolicyArn) {

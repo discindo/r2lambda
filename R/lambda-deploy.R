@@ -67,7 +67,7 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "Failed to create a folder with Lambda Dockerfile and runtime script." # nolint
+      msg <- "[build_lambda] Failed to create a folder with Lambda Dockerfile and runtime script." # nolint
       logger::log_error(msg)
       rlang::abort(e$message)
     }
@@ -86,7 +86,7 @@ build_lambda <- function(
       )
     },
     error = function(e) {
-      msg <- "Failed to create Lambda Docker image."
+      msg <- "[build_lambda] Failed to create Lambda Docker image."
       logger::log_error(msg)
       rlang::abort(e$message)
     }
@@ -244,7 +244,7 @@ deploy_lambda <-
         push_lambda_image(repo_uri = ecr_image_uri)
       },
       error = function(e) {
-        msg <- "Failed to push Lambda Docker image to AWS ECR."
+        msg <- "[deploy_lambda] Failed to push Lambda Docker image to AWS ECR."
         logger::log_error(msg)
         rlang::abort(e$message)
       }
@@ -264,7 +264,7 @@ deploy_lambda <-
           create_lambda_exec_role(tag = tag, policy_arns = policy_arns)
         },
         error = function(e) {
-          msg <- "Failed to create Lambda execution role in AWS IAM."
+          msg <- "[deploy_lambda] Failed to create Lambda execution role in AWS IAM."
           logger::log_error(msg)
           rlang::abort(e$message)
         }
@@ -293,7 +293,7 @@ deploy_lambda <-
         )
       },
       error = function(e) {
-        msg <- "Failed to create Lambda function."
+        msg <- "[deploy_lambda] Failed to create Lambda function."
         logger::log_error(msg)
         rlang::abort(e$message)
       }
@@ -500,8 +500,8 @@ schedule_lambda <- function(lambda_function, execution_rate) {
 #' CloudWatch log group, and the local Docker image. Resources that don't
 #' exist are skipped, so it also cleans up after a failed deploy.
 #'
-#' Only roles named `<tag>--<uuid>`, as `deploy_lambda()` names them, are
-#' deleted. A role passed to `deploy_lambda(role_arn = )` is kept. A
+#' Only roles `deploy_lambda()` created for `tag` are deleted. A role passed
+#' to `deploy_lambda(role_arn = )` is kept. A
 #' schedule rule that also targets other resources is kept, without this
 #' function as a target.
 #'
