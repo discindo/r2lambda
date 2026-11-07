@@ -8,6 +8,9 @@ development:
   mode: release
 
 articles:
+  - title: Get started
+    contents:
+      - articles/r2lambda
   - title: Tutorials
     contents:
       - articles/tt-lambda
