@@ -12,7 +12,7 @@ knitr:
 library(r2lambda)
 ```
 
-## Use `{r2lambda}` to download Tidytuesday dataset
+## Use `r2lambda` to download Tidytuesday dataset
 
 In this exercise, we'll create an AWS Lambda function that downloads
 the [tidytuesday](https://github.com/rfordatascience/tidytuesday) 
@@ -94,7 +94,7 @@ that calls `install.packages` to install `{tidytuesdayR}` from CRAN.
 
 - Finally, the `tag` argument sets the name of our Lambda function which we'll use 
 later to test and invoke the function. The `tag` argument also becomes the name of 
-the folder that `{r2lambda}` will create to build the image. This folder will have
+the folder that `r2lambda` will create to build the image. This folder will have
 two files, `Dockerfile` and `runtime.R`. `runtime.R` is our script from `runtime_path`,
 renamed before it is copied in the `docker` image with a `COPY` instruction.
 
