@@ -1,0 +1,141 @@
+---
+title: "Get started with r2lambda"
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"
+    eval: false
+---
+
+```{r}
+#| label: setup
+library(r2lambda)
+```
+
+This article walks through the whole life of a Lambda function: build a
+Docker image, test it locally, deploy it, invoke it, run it on a
+schedule and delete it. It assumes Docker, curl and AWS credentials are
+set up as described in the
+[README](https://discindo.github.io/r2lambda/#system-requirements).
+
+## Build a docker image for the lambda function
+
+The examples use two files installed with the package:
+`parity.R`, a runtime script whose `parity()` function tells whether a
+number is even or odd, and `renv.lock`, an example lockfile.
+`system.file()` returns their paths. Replace them with your own script
+and lockfile.
+
+```{r}
+runtime_function <- "parity"
+runtime_path <- system.file("parity.R", package = "r2lambda")
+renvlock_path <- system.file("renv.lock", package = "r2lambda")
+dependencies <- NULL
+
+# Might take a while, its building a docker image
+build_lambda(
+  tag = "parity1",
+  runtime_function = runtime_function,
+  runtime_path = runtime_path,
+  renvlock_path = renvlock_path,
+  dependencies = dependencies
+)
+```
+
+`build_lambda()` has a few more options:
+
+- `support_path`: files or folders the runtime script needs. Each is
+  copied next to the runtime script under its own name, so
+  `support_path = "R"` lets the script call `source("R/helpers.R")`.
+- `system_deps`: Amazon Linux 2023 packages to install with `dnf`, for R
+  packages that need system libraries, e.g. `system_deps = "udunits2"`
+  for `units`. Amazon Linux 2023 has no EPEL, so some libraries, such as
+  GDAL, are not available.
+- `architecture`: `"x86_64"` (default) or `"arm64"`. `deploy_lambda()`
+  creates the function with the image's architecture. Building for an
+  architecture other than your machine's needs Docker's QEMU emulation.
+
+## Test the lambda docker image locally
+
+```{r}
+payload <- list(number = 2)
+test_lambda(tag = "parity1", payload)
+```
+
+## Deploy to AWS Lambda
+
+```{r}
+# Might take a while, its pushing it to a remote repository
+deploy_lambda(tag = "parity1")
+```
+
+Lambda stops a function after 3 seconds by default, which an R
+container may not meet, especially on its first call. Pass a longer
+`Timeout`, in seconds, and other `create_function()` settings through
+`...`:
+
+```{r}
+deploy_lambda(tag = "parity1", Timeout = 30, MemorySize = 512)
+```
+
+The function runs under a new IAM role with basic execution permissions.
+To let it call other AWS services, attach policies to that role, or use
+a role you already have:
+
+```{r}
+deploy_lambda(
+  tag = "parity1",
+  policy_arns = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+)
+
+deploy_lambda(tag = "parity1", role_arn = "arn:aws:iam::123456789012:role/my-role")
+```
+
+Inside the function, `paws` picks up the role's temporary credentials,
+so no AWS keys go into the image or the function's settings.
+
+## Invoke deployed lambda
+
+```{r}
+invoke_lambda(
+  function_name = "parity1",
+  invocation_type = "RequestResponse",
+  payload = list(number = 2),
+  include_logs = FALSE
+)
+
+#> Lambda response payload:
+#> {"parity":"even"}
+```
+
+## Run on a schedule
+
+`schedule_lambda()` runs a deployed function at a `rate()` or `cron()`
+[schedule
+expression](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-create-rule-schedule.html):
+
+```{r}
+schedule_lambda("parity1", "rate(5 minutes)")
+```
+
+A scheduled run doesn't take a payload. `{lambdr}` passes the `detail`
+of the EventBridge event to the handler as arguments, and for a schedule
+that is empty, so the handler is called with no arguments. `parity()`
+needs `number`, so each scheduled run of `parity1` fails. Give the
+arguments of a scheduled handler defaults, e.g.
+`parity <- function(number = 2)`.
+
+## Clean up
+
+`delete_lambda()` removes what the steps above created: the function
+and its schedules, the execution role, the ECR repository with its
+images, the function's log group, and the local Docker image.
+
+```{r}
+delete_lambda("parity1")
+
+# Keep the images, for example to deploy them again later
+delete_lambda("parity1", keep_ecr_image = TRUE, keep_local_image = TRUE)
+```
+
+A role you passed with `deploy_lambda(role_arn = )` is never deleted.
