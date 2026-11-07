@@ -7,12 +7,12 @@
 coverage](https://codecov.io/gh/discindo/r2lambda/graph/badge.svg)](https://app.codecov.io/gh/discindo/r2lambda)
 <!-- badges: end -->
 
-The goal of `{r2lambda}` is to make it easier to go from an `R` script
+The goal of `r2lambda` is to make it easier to go from an `R` script
 to a deployed `AWS Lambda` function.
 
 ## System requirements
 
-`{r2lambda}` calls two programs outside R. They are the same on Linux,
+`r2lambda` calls two programs outside R. They are the same on Linux,
 macOS and Windows; only how you install them differs.
 
 - [Docker](https://docs.docker.com/get-docker/) with the
@@ -30,17 +30,17 @@ macOS and Windows; only how you install them differs.
 
 ## Installation
 
-You can install the released version of `{r2lambda}` from CRAN with:
+You can install the released version of `r2lambda` from CRAN with:
 
 ``` r
 install.packages("r2lambda")
 ```
 
-You can install the development version of `{r2lambda}` from GitHub with:
+You can install the development version of `r2lambda` from GitHub with:
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("discindo/r2lambda")
+# install.packages("pak")
+pak::pak("discindo/ggindex")
 ```
 
 ## Setup

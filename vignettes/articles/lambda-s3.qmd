@@ -17,7 +17,7 @@ library(tidytuesdayR)
 
 At the end of this tutorial, we would have created an AWS Lambda function that fetches
 the most-recent Tidytuesday dataset and writes it into an S3 Bucket every Wednesday.
-To do this, we'll first work interactively with `{r2lambda}` and `{paws}` to go 
+To do this, we'll first work interactively with `r2lambda` and `{paws}` to go 
 through all the steps the Lambda function would eventually need to do, then wrap
 the code and deploy it to AWS Lambda, and finally schedule it to run weekly. 
 
@@ -33,7 +33,7 @@ session helps.
 
 **To run any of the code below, you need some environmental variables set. See 
 the [Setup](https://github.com/discindo/r2lambda#build-a-docker-image-for-the-lambda-function) 
-section in the `{r2lambda}` package readme for more details**
+section in the `r2lambda` package readme for more details**
 
 ```{r}
 s3_service <- aws_connect("s3")
