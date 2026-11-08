@@ -30,17 +30,23 @@ macOS and Windows; only how you install them differs.
 
 ## Installation
 
-You can install the released version of `r2lambda` from CRAN with:
+### From CRAN
 
 ``` r
 install.packages("r2lambda")
 ```
 
-You can install the development version of `r2lambda` from GitHub with:
+### From GitHub with
 
 ``` r
 # install.packages("pak")
 pak::pak("discindo/ggindex")
+```
+
+### From R-Universe
+
+``` r
+install.packages('r2lambda', repos = c('https://discindo.r-universe.dev'))
 ```
 
 ## Setup
