@@ -36,7 +36,7 @@ macOS and Windows; only how you install them differs.
 install.packages("r2lambda")
 ```
 
-### From GitHub with
+### From GitHub
 
 ``` r
 # install.packages("pak")
@@ -46,7 +46,8 @@ pak::pak("discindo/r2lambda")
 ### From R-Universe
 
 ``` r
-install.packages('r2lambda', repos = c('https://discindo.r-universe.dev'))
+install.packages("r2lambda",
+repos = c("https://discindo.r-universe.dev", "https://cloud.r-project.org"))
 ```
 
 ## Setup
