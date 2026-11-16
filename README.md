@@ -40,7 +40,7 @@ install.packages("r2lambda")
 
 ``` r
 # install.packages("pak")
-pak::pak("discindo/ggindex")
+pak::pak("discindo/r2lambda")
 ```
 
 ### From R-Universe
