@@ -34,7 +34,9 @@ schedule rule that also targets other resources is kept, without this
 function as a target.
 }
 \examples{
-\dontrun{
-  delete_lambda("parity1")
+\donttest{
+if (interactive()) {
+    delete_lambda("parity1")
+}
 }
 }
