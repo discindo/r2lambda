@@ -27,8 +27,10 @@ function runs again, so a function with side effects, such as writing to
 S3, can run more than once.
 }
 \examples{
-\dontrun{
-  payload <- list(number = 2)
-  test_lambda(tag = "parity1", payload)
+\donttest{
+if (interactive()) {
+    payload <- list(number = 2)
+    test_lambda(tag = "parity1", payload)
+}
 }
 }

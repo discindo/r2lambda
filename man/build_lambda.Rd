@@ -55,11 +55,13 @@ packages, not both. By default, both are `NULL`, so the Docker image will
 have no additional packages installed.
 }
 \examples{
-\dontrun{
-  build_lambda(
-    tag = "parity1",
-    runtime_function = "parity",
-    runtime_path = system.file("parity.R", package = "r2lambda")
-  )
+\donttest{
+if (interactive()) {
+    build_lambda(
+      tag = "parity1",
+      runtime_function = "parity",
+      runtime_path = system.file("parity.R", package = "r2lambda")
+    )
+}
 }
 }

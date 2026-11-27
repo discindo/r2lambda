@@ -27,12 +27,14 @@
 #' @return None, called for its side effect of building a local Docker image.
 #'
 #' @examples
-#' \dontrun{
-#'   build_lambda(
-#'     tag = "parity1",
-#'     runtime_function = "parity",
-#'     runtime_path = system.file("parity.R", package = "r2lambda")
-#'   )
+#' \donttest{
+#' if (interactive()) {
+#'     build_lambda(
+#'       tag = "parity1",
+#'       runtime_function = "parity",
+#'       runtime_path = system.file("parity.R", package = "r2lambda")
+#'     )
+#' }
 #' }
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
@@ -127,9 +129,11 @@ build_lambda <- function(
 #' S3, can run more than once.
 #'
 #' @examples
-#' \dontrun{
-#'   payload <- list(number = 2)
-#'   test_lambda(tag = "parity1", payload)
+#' \donttest{
+#' if (interactive()) {
+#'     payload <- list(number = 2)
+#'     test_lambda(tag = "parity1", payload)
+#' }
 #' }
 #' @importFrom glue glue glue_collapse single_quote double_quote
 #' @export
@@ -201,27 +205,27 @@ test_lambda <- function(tag, payload) {
 #' `Lambda_function_arn`.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (interactive()) {
+#'     runtime_function <- "parity"
+#'     runtime_path <- system.file("parity.R", package = "r2lambda")
+#'     dependencies <- NULL
 #'
-#'   runtime_function <- "parity"
-#'   runtime_path <- system.file("parity.R", package = "r2lambda")
-#'   dependencies <- NULL
+#'     build_lambda(
+#'       tag = "myrepo52",
+#'       runtime_function = runtime_function,
+#'       runtime_path = runtime_path,
+#'       dependencies = dependencies
+#'       )
 #'
-#'   build_lambda(
-#'     tag = "myrepo52",
-#'     runtime_function = runtime_function,
-#'     runtime_path = runtime_path,
-#'     dependencies = dependencies
-#'     )
+#'     deploy_lambda(tag = "myrepo52")
 #'
-#'   deploy_lambda(tag = "myrepo52")
-#'
-#'   invoke_lambda(
-#'     function_name = "myrepo52",
-#'     payload = list(number = 3),
-#'     invocation_type = "RequestResponse"
-#'     )
-#'
+#'     invoke_lambda(
+#'       function_name = "myrepo52",
+#'       payload = list(number = 3),
+#'       invocation_type = "RequestResponse"
+#'       )
+#' }
 #' }
 #' @importFrom paws ecr iam lambda s3 eventbridge cloudwatchlogs
 #' @export
@@ -372,12 +376,14 @@ deploy_lambda <-
 #' elements such as `StatusCode` and `Payload` (a raw vector). The payload is
 #' also printed.
 #' @examples
-#' \dontrun{
-#'   invoke_lambda(
-#'    function_name = "parity",
-#'    payload = list(number = 3),
-#'    invocation_type = "RequestResponse"
-#'   )
+#' \donttest{
+#' if (interactive()) {
+#'     invoke_lambda(
+#'      function_name = "parity",
+#'      payload = list(number = 3),
+#'      invocation_type = "RequestResponse"
+#'     )
+#' }
 #' }
 #' @export
 invoke_lambda <-
@@ -435,10 +441,12 @@ invoke_lambda <-
 #' @return None, called for its side effect of creating the schedule.
 #'
 #' @examples
-#' \dontrun{
-#'   # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
-#'   # at 8 am
-#'   schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+#' \donttest{
+#' if (interactive()) {
+#'     # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
+#'     # at 8 am
+#'     schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+#' }
 #' }
 #'
 #' @export
@@ -561,8 +569,10 @@ schedule_lambda <- function(lambda_function, execution_rate) {
 #' @return Invisibly, a list with the names of the deleted resources.
 #'
 #' @examples
-#' \dontrun{
-#'   delete_lambda("parity1")
+#' \donttest{
+#' if (interactive()) {
+#'     delete_lambda("parity1")
+#' }
 #' }
 #' @export
 delete_lambda <- function(

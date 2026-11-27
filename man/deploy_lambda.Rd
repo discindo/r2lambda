@@ -32,26 +32,26 @@ Invisibly, a list with `ECR_image_uri`, `IAM_lambda_role_arn` and
 deploy a local lambda image to AWS Lambda
 }
 \examples{
-\dontrun{
+\donttest{
+if (interactive()) {
+    runtime_function <- "parity"
+    runtime_path <- system.file("parity.R", package = "r2lambda")
+    dependencies <- NULL
 
-  runtime_function <- "parity"
-  runtime_path <- system.file("parity.R", package = "r2lambda")
-  dependencies <- NULL
+    build_lambda(
+      tag = "myrepo52",
+      runtime_function = runtime_function,
+      runtime_path = runtime_path,
+      dependencies = dependencies
+      )
 
-  build_lambda(
-    tag = "myrepo52",
-    runtime_function = runtime_function,
-    runtime_path = runtime_path,
-    dependencies = dependencies
-    )
+    deploy_lambda(tag = "myrepo52")
 
-  deploy_lambda(tag = "myrepo52")
-
-  invoke_lambda(
-    function_name = "myrepo52",
-    payload = list(number = 3),
-    invocation_type = "RequestResponse"
-    )
-
+    invoke_lambda(
+      function_name = "myrepo52",
+      payload = list(number = 3),
+      invocation_type = "RequestResponse"
+      )
+}
 }
 }

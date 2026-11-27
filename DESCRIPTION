@@ -1,6 +1,6 @@
 Package: r2lambda
 Type: Package
-Title: Deploy 'R' Scripts as 'AWS Lambda' Functions
+Title: Deploy 'R' Scripts as AWS Lambda Functions
 Version: 0.3.0
 Authors@R: c(
     person("Teofil", "Nakov", , "teofiln@gmail.com", role = "aut",
@@ -10,12 +10,12 @@ Authors@R: c(
     person("Discindo", role = "cph")
   )
 Description: Build, test and deploy 'R' scripts as Amazon Web Services
-    ('AWS') 'Lambda' functions packaged in 'Docker' container images.
-    Images are built and tested locally, pushed to the 'AWS' Elastic
+    (AWS) Lambda functions packaged in 'Docker' container images.
+    Images are built and tested locally, pushed to the AWS Elastic
     Container Registry, and deployed with an execution role; deployed
     functions can be invoked, scheduled and deleted from 'R'. Wraps
     functionality from the 'paws' and 'lambdr' packages. See
-    <https://aws.amazon.com/lambda/> for the 'AWS Lambda' service.
+    <https://aws.amazon.com/lambda/> for the AWS Lambda service.
 License: GPL (>= 3)
 Depends: R (>= 4.1.0)
 Encoding: UTF-8

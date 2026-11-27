@@ -21,10 +21,12 @@ None, called for its side effect of creating the schedule.
 Put a deployed lambda function on a schedule
 }
 \examples{
-\dontrun{
-  # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
-  # at 8 am
-  schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+\donttest{
+if (interactive()) {
+    # Make Tidytuesday lambda fetch the Tidytuesday dataset every Wednesday
+    # at 8 am
+    schedule_lambda("Tidytuesday3", "cron(0 8 * * Wed)")
+}
 }
 
 }
